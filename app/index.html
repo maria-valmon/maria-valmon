@@ -78,6 +78,8 @@ p { margin: 0; }
 .btn.sm { padding: 7px 12px; font-size: 13px; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .link { background: none; border: 0; padding: 0; color: var(--pink-soft); font-weight: 700; font-size: 13px; }
+.app > .link { align-self: flex-start; }
+[hidden] { display: none !important; }
 
 .seg { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .seg button { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 8px 14px; font-weight: 600; font-size: 14px; white-space: nowrap; }
@@ -115,8 +117,8 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; border-top: 0; }
 .scroll-x { overflow-x: auto; }
 
 .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
-.tabs nav { max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
-.tabs button { background: none; border: 0; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; padding: 6px 0; border-radius: 12px; }
+.tabs nav { max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(6, 1fr); }
+.tabs button { background: none; border: 0; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 600; padding: 6px 0; border-radius: 12px; }
 .tabs button svg { width: 22px; height: 22px; }
 .tabs button[aria-current="page"] { color: var(--pink); }
 
@@ -140,6 +142,24 @@ textarea { min-height: 84px; resize: vertical; }
 .banner { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 10px 14px; border-radius: 14px; border: 1px dashed color-mix(in srgb, var(--pink) 50%, transparent); font-size: 13px; color: var(--pink-soft); }
 .toast { position: fixed; left: 50%; bottom: calc(88px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 700; font-size: 14px; z-index: 30; }
 svg text { font-family: var(--body); }
+.switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.switch button { border: 0; background: transparent; color: var(--muted); border-radius: 10px; padding: 10px; font-weight: 700; font-size: 15px; }
+.switch button[aria-pressed="true"] { background: var(--pink); color: var(--pink-ink); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 600; text-align: left; }
+.chip:hover { border-color: var(--pink); }
+.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.qs { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+.qs li::marker { color: var(--pink); font-weight: 700; }
+.note { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); }
+a.ext { color: var(--pink-soft); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.ai-out { background: var(--surface-2); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.ai-out ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.ai-out h3 { font-size: 15px; }
+.stbtn { cursor: pointer; flex: none; min-width: 98px; justify-content: center; }
+.hardbtn { border: 1px dashed var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: 3px 9px; font-size: 11px; font-weight: 700; }
+.hardbtn[aria-pressed="true"] { border-style: solid; border-color: var(--warn); color: var(--warn); }
+.x { flex: none; background: none; border: 0; color: var(--muted); font-size: 22px; line-height: 1; padding: 2px 6px; }
 @media (prefers-reduced-motion: no-preference) {
   .sheet { animation: up .22s ease-out; }
   @keyframes up { from { transform: translateY(30px); opacity: .6; } }
@@ -256,6 +276,11 @@ const RECS = [
   { t: 'Enfócate (Deep Work)', a: 'Cal Newport', cat: 'Productividad', why: 'Primero lo primero llevado al trabajo concentrado.' },
 ];
 
+/* @contenido-inicio */
+const REL_CONTENT = { otro: { books: [], text: null, questions: ['¿Qué pasó exactamente y qué hiciste tú?', '¿Qué sentías justo antes?', '¿Qué te gustaría haber hecho?'], practice: 'Antes de responder en una conversación difícil, respira y cuenta hasta cinco.', covey: '' } };
+const LEARN = {};
+/* @contenido-fin */
+
 /* ============ Utilidades ============ */
 const pad = n => String(n).padStart(2, '0');
 const dkey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -304,7 +329,7 @@ function seed() {
       { date: daysAgo(0), cintura: 72, cadera: 98, gluteo: 100, muslo: 56.5, brazo: 28 },
     ],
     workouts: [w(0, 'p1'), w(2, 'p2'), w(3, 'p3'), w(5, 'p4'), w(7, 'p1'), w(9, 'p2')],
-    days, moods,
+    days, moods, rel: [], topics: defaultTopics(),
     projects: [
       { id: uid(), name: 'Valmon · mi app', area: 'Personal', status: 'en marcha', next: 'Elegir servidor', tasks: [
         { id: uid(), text: 'Diseñar las pantallas', done: true }, { id: uid(), text: 'Primera versión en el móvil', done: true },
@@ -316,7 +341,7 @@ function seed() {
 }
 function blank() {
   const s = seed();
-  return { ...s, profile: { ...S.profile }, weights: S.weights.length ? S.weights.slice(-1) : s.weights, example: false, books: [{ ...SEVEN, status: 'leyendo', page: 0 }], active: [], checks: {}, learnings: [], measures: [], workouts: [], days: {}, moods: {}, projects: [] };
+  return { ...s, profile: { ...S.profile }, weights: S.weights.length ? S.weights.slice(-1) : s.weights, example: false, books: [{ ...SEVEN, status: 'leyendo', page: 0 }], active: [], checks: {}, learnings: [], measures: [], workouts: [], days: {}, moods: {}, projects: [], rel: [], topics: defaultTopics() };
 }
 let S;
 try { S = JSON.parse(localStorage.getItem(KEY)) || seed(); } catch (e) { S = seed(); }
@@ -328,13 +353,18 @@ if (!S.profile.birth) { // v1 → v2: datos reales de María
   S.v = 2;
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
 }
+if (!S.rel || !S.topics) { // v2 → v3: Relaciones y Aprendizaje
+  S.rel = S.rel || []; S.topics = S.topics || defaultTopics(); S.v = 3;
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+}
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 
-let UI = { tab: 'home', mind: 'books', bookId: null, body: 'resumen', sheet: null, confirmReset: false };
+let UI = { tab: 'home', mind: 'books', mindArea: 'lectura', bookId: null, topicId: null, body: 'resumen', relArea: 'pareja', relId: null, sheet: null, confirmReset: false, confirmDel: null };
 try { const t = localStorage.getItem(KEY + '.tab'); if (t) UI.tab = t; } catch (e) {}
 
 /* ============ Cálculos ============ */
-const allChallenges = () => S.books.flatMap(b => (b.chapters || []).flatMap(c => c.challenges.map(ch => ({ ...ch, book: b, chapter: c }))));
+const allChallenges = () => [...S.books.flatMap(b => (b.chapters || []).flatMap(c => c.challenges.map(ch => ({ ...ch, book: b, chapter: c })))),
+  ...S.rel.map(e => ({ id: 'r-' + e.id, type: 'daily', text: e.practice || relContent(e.pattern).practice }))];
 const isDone = (cid, day = today()) => (S.checks[cid] || []).includes(day);
 function streak(cid) {
   const set = new Set(S.checks[cid] || []);
@@ -487,12 +517,14 @@ function viewHome() {
 }
 
 function viewMind() {
-  const seg = `<div class="seg" role="group" aria-label="Salud mental">
-    ${[['books', 'Mis libros'], ['learn', 'Aprendizajes'], ['recs', 'Recomendados']].map(([k, l]) => `<button aria-pressed="${UI.mind === k && !UI.bookId}" data-a="mind" data-k="${k}">${l}</button>`).join('')}</div>`;
+  const sw = `<div class="switch" role="group" aria-label="Salud mental">${[['lectura', 'Lectura'], ['aprender', 'Aprendizaje']].map(([k, l]) => `<button aria-pressed="${UI.mindArea === k}" data-a="marea" data-k="${k}">${l}</button>`).join('')}</div>`;
+  if (UI.mindArea === 'aprender') return `<header class="top"><div><p class="eyebrow">Salud mental · Aprendizaje</p><h1>Lo que<br><em>estoy aprendiendo</em></h1></div></header>` + (UI.topicId ? '' : sw) + viewLearn();
+  const seg = sw + `<div class="seg" role="group" aria-label="Lectura">
+    ${[['books', 'Mis libros'], ['learn', 'Ideas'], ['recs', 'Recomendados']].map(([k, l]) => `<button aria-pressed="${UI.mind === k && !UI.bookId}" data-a="mind" data-k="${k}">${l}</button>`).join('')}</div>`;
   const head = `<header class="top"><div><p class="eyebrow">Salud mental · Lectura</p><h1>Lo que<br><em>estoy leyendo</em></h1></div></header>`;
   if (UI.bookId) return head + viewBook(S.books.find(b => b.id === UI.bookId));
   if (UI.mind === 'learn') {
-    return head + seg + `<section class="card"><div class="row between"><h2>Aprendizajes</h2><button class="btn sm" data-a="sheet" data-s="learning">Añadir</button></div>
+    return head + seg + `<section class="card"><div class="row between"><h2>Ideas que me llevo</h2><button class="btn sm" data-a="sheet" data-s="learning">Añadir</button></div>
       ${S.learnings.length ? [...S.learnings].reverse().map(l => { const b = S.books.find(x => x.id === l.bookId) || {}; const c = (b.chapters || []).find(c => c.id === l.chapter);
         return `<div class="check"><div class="grow stack" style="gap:4px"><p>${esc(l.text)}</p><p class="small muted">${esc(b.title || '')}${c ? ' · ' + esc(c.title) : ''} · ${fmtDay(l.date)}</p></div></div>`; }).join('')
       : '<p class="muted">Apunta aquí lo que te llevas de cada capítulo. La portada te los irá recordando.</p>'}</section>`;
@@ -537,8 +569,8 @@ function viewBook(b) {
         <p class="small grow">${esc(ch.text)} <span class="muted">· ${ch.type === 'daily' ? 'diario' : ch.type === 'weekly' ? 'semanal' : 'una vez'}</span></p>
         <button class="btn sm ${on ? 'quiet' : 'ghost'}" data-a="activate" data-id="${ch.id}" aria-pressed="${on}">${on ? 'Activo' : 'Activar'}</button></div>
         ${on ? challengeRow({ ...ch }) : ''}`; }).join('')}</div>`).join('')}</section>`
-    : `<section class="card"><h2>Capítulos y retos</h2><p class="muted small">Este libro aún no tiene retos. Añade aprendizajes mientras lo lees.</p></section>`}
-  <section class="card"><div class="row between"><h2>Mis aprendizajes</h2><button class="btn sm" data-a="sheet" data-s="learning" data-book="${b.id}">Añadir</button></div>
+    : `<section class="card"><h2>Capítulos y retos</h2><p class="muted small">Este libro aún no tiene retos. Apunta las ideas que te lleves mientras lo lees.</p></section>`}
+  <section class="card"><div class="row between"><h2>Ideas que me llevo</h2><button class="btn sm" data-a="sheet" data-s="learning" data-book="${b.id}">Añadir</button></div>
     ${ls.length ? ls.map(l => `<div class="check"><p class="grow">${esc(l.text)}</p></div>`).join('') : '<p class="muted small">Aún no has apuntado nada de este libro.</p>'}</section>`;
 }
 
@@ -693,6 +725,209 @@ function viewProfile() {
   <section class="card"><h2>Dónde se guarda</h2><p class="small muted">Por ahora todo se guarda en este móvil. Cuando tengas el servidor se sincronizará entre dispositivos.</p></section>`;
 }
 
+/* ============ Relaciones ============ */
+const REL_AREAS = [['pareja', 'Pareja'], ['familia', 'Familia'], ['amigos', 'Amigos']];
+const REL_PATTERNS = [
+  ['celos', 'Celos o inseguridad'], ['defensiva', 'Me pongo a la defensiva cuando discutimos'], ['escuchar', 'Me cuesta escuchar sin interrumpir o juzgar'],
+  ['limites', 'Me cuesta poner límites o decir que no'], ['enfado', 'Reacciono con enfado o de forma impulsiva'], ['control', 'Necesito tener el control'],
+  ['evito', 'Evito los conflictos y me lo guardo'], ['critica', 'Critico o juzgo mucho'], ['rencor', 'Guardo rencor o me cuesta perdonar'],
+  ['aprobacion', 'Necesito la aprobación de los demás'], ['comparacion', 'Me comparo o siento envidia'], ['atencion', 'No dedico tiempo ni atención de calidad'],
+  ['roles', 'Con mi familia vuelvo a mis viejos roles', ['familia']], ['otro', 'Otra cosa'],
+];
+const REL_STATUS = [['abierto', 'Abierto', ''], ['trabajando', 'Trabajándolo', 'pink'], ['mejor', 'Lo llevo mejor', 'ok']];
+const patLabel = id => (REL_PATTERNS.find(p => p[0] === id) || REL_PATTERNS[REL_PATTERNS.length - 1])[1];
+const relContent = id => REL_CONTENT[id] || REL_CONTENT.otro;
+const areaLabel = id => (REL_AREAS.find(a => a[0] === id) || REL_AREAS[0])[1];
+const hasBook = t => S.books.some(b => b.title.toLowerCase() === t.toLowerCase());
+
+function viewRel() {
+  const head = `<header class="top"><div><p class="eyebrow">Relaciones personales</p><h1>Cómo me<br><em>relaciono</em></h1></div></header>`;
+  const seg = `<div class="seg" role="group" aria-label="Relaciones">${REL_AREAS.map(([k, l]) => `<button aria-pressed="${UI.relArea === k && !UI.relId}" data-a="relarea" data-k="${k}">${l}</button>`).join('')}</div>`;
+  if (UI.relId) { const e = S.rel.find(x => x.id === UI.relId); if (e) return head + relEntry(e); UI.relId = null; }
+  const area = UI.relArea, list = S.rel.filter(e => e.area === area).sort((a, b) => b.date.localeCompare(a.date));
+  const pats = REL_PATTERNS.filter(p => !p[2] || p[2].includes(area));
+  return head + seg + `
+  <section class="card"><div class="row between"><h2>${areaLabel(area)}</h2><button class="btn sm" data-a="sheet" data-s="rel">Apuntar</button></div>
+    <p class="small muted">Apunta algo de tu actitud que no te gusta. Te propongo preguntas para mirar hacia dentro, lecturas y una práctica pequeña para cada día.</p>
+    ${list.length ? `<div>${list.map(e => { const st = REL_STATUS.find(s => s[0] === e.status) || REL_STATUS[0];
+      return `<button class="tap list-item" data-a="rel" data-id="${e.id}"><div class="grow stack" style="gap:4px">
+        <div class="row between" style="align-items:flex-start"><h3 class="grow">${esc(patLabel(e.pattern))}</h3><span class="pill ${st[2]}">${st[1]}</span></div>
+        <p class="small muted clamp">${esc(e.text)}</p><p class="small muted num">${fmtDay(e.date)}${S.active.includes('r-' + e.id) ? ' · práctica activa' : ''}</p></div></button>`; }).join('')}</div>` : ''}
+  </section>
+  <section class="card"><h3>${list.length ? 'Otras cosas que a veces pasan' : '¿Te pasa alguna de estas?'}</h3>
+    <div class="chips">${pats.map(([k, l]) => `<button class="chip" data-a="relpat" data-k="${k}">${esc(l)}</button>`).join('')}</div></section>
+  ${area === 'pareja' ? `<section class="card note"><p class="small"><b>Importante.</b> Si en tu relación hay miedo, control, humillaciones o violencia, no es un problema de tu actitud. En España puedes llamar al <b class="num">016</b>: es gratis, atiende 24 h y no aparece en la factura.</p></section>` : ''}`;
+}
+
+function relEntry(e) {
+  const c = relContent(e.pattern), pid = 'r-' + e.id, on = S.active.includes(pid);
+  return `<button class="link" data-a="relback">← ${areaLabel(e.area)}</button>
+  <section class="card"><p class="kicker">${esc(areaLabel(e.area))} · ${esc(patLabel(e.pattern))}</p>
+    <p>${esc(e.text)}</p>
+    <div class="row between wrap"><span class="small muted num">${fmtDay(e.date)}</span>
+      <select id="rs-${e.id}" data-a="relstatus" data-id="${e.id}" aria-label="Estado" style="width:auto;padding:6px 10px;font-size:13px">${REL_STATUS.map(([k, l]) => `<option value="${k}" ${k === e.status ? 'selected' : ''}>${l}</option>`).join('')}</select></div></section>
+  <section class="card"><h2>Mirar hacia dentro</h2>
+    <ol class="qs">${c.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ol>
+    <form class="stack" data-form="relnote" data-id="${e.id}"><label class="f">Lo que he descubierto<textarea id="rn-${e.id}" name="text" required placeholder="Escribe sin filtro, solo lo vas a leer tú"></textarea></label><button class="btn quiet">Guardar reflexión</button></form>
+    ${(e.notes || []).length ? `<div>${[...e.notes].reverse().map(n => `<div class="check"><div class="grow stack" style="gap:3px"><p>${esc(n.text)}</p><p class="small muted num">${fmtDay(n.date)}</p></div></div>`).join('')}</div>` : ''}</section>
+  <section class="card"><div class="row between"><h2>Práctica diaria</h2><button class="btn sm ${on ? 'quiet' : 'ghost'}" data-a="relprac" data-id="${e.id}" aria-pressed="${on}">${on ? 'Activa' : 'Activar'}</button></div>
+    <p>${esc(e.practice || c.practice)}</p>${on ? challengeRow({ id: pid, type: 'daily', text: 'Marcar hoy' }) : '<p class="small muted">Actívala y aparecerá cada día en tus retos de Inicio, con tu racha.</p>'}</section>
+  <section class="card"><h2>Para leer</h2>
+    ${c.books.map(b => { const inList = hasBook(b.title); return `<div class="list-item"><div class="cover">${esc(b.title[0])}</div><div class="grow stack" style="gap:3px">
+      <h3>${esc(b.title)}</h3><p class="small muted">${esc(b.author)}</p><p class="small">${esc(b.why)}</p>
+      <div><button class="btn ghost sm" data-a="relbook" data-t="${esc(b.title)}" data-au="${esc(b.author)}" ${inList ? 'disabled' : ''}>${inList ? 'En tu lista' : 'Añadir a pendientes'}</button></div></div></div>`; }).join('')}
+    ${c.text ? `<div class="check"><div class="grow stack" style="gap:3px"><p class="eyebrow">Para hoy, gratis</p><a class="ext" href="${esc(c.text.url)}" target="_blank" rel="noopener noreferrer">${esc(c.text.title)}</a><p class="small muted">${esc(c.text.source)}${c.text.lang === 'en' ? ' · en inglés' : ''}</p></div></div>` : ''}
+    ${c.covey ? `<p class="small muted">Conecta con lo que estás leyendo: <span style="color:var(--fg)">${esc(c.covey)}</span>, de Los 7 hábitos.</p>` : ''}</section>
+  ${aiCard('rel', e.id, 'Cuéntale a Claude tu caso y te propone preguntas, lecturas y un paso pequeño solo para esta situación.', '¿Algo más que quieras contarle? (opcional)', e.ai)}
+  <section class="card"><div class="row between"><span class="small muted">¿Ya no quieres guardarlo?</span>
+    ${UI.confirmDel === e.id ? `<div class="row"><button class="btn sm" data-a="reldelok" data-id="${e.id}">Borrar</button><button class="btn sm quiet" data-a="nodel">No</button></div>` : `<button class="link" data-a="reldel" data-id="${e.id}">Borrar</button>`}</div></section>`;
+}
+
+/* ============ Aprendizaje ============ */
+const ITEM_STATUS = [['pendiente', 'Pendiente', ''], ['aprendiendo', 'Aprendiendo', 'pink'], ['aprendido', 'Aprendido', 'ok']];
+const RES_TYPES = ['web', 'curso', 'vídeo', 'podcast', 'app', 'docs', 'libro'];
+function safeUrl(u) {
+  u = String(u || '').trim(); if (!u) return null;
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(u)) u = 'https://' + u;
+  try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : null; } catch (e) { return null; }
+}
+const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
+function defaultTopics() {
+  return [['ingles', 'Inglés'], ['claude', 'Claude e IA'], ['programacion', 'Programación']].map(([key, name]) => ({
+    id: uid(), key, name, resources: [],
+    items: ((LEARN[key] || {}).goals || []).slice(0, 3).map(text => ({ id: uid(), text, status: 'pendiente', hard: false })),
+  }));
+}
+const topicPct = t => t.items.length ? Math.round(t.items.filter(i => i.status === 'aprendido').length / t.items.length * 100) : 0;
+
+function viewLearn() {
+  if (UI.topicId) { const t = S.topics.find(x => x.id === UI.topicId); if (t) return topicView(t); UI.topicId = null; }
+  return `${S.topics.map(t => { const hard = t.items.filter(i => i.hard && i.status !== 'aprendido').length;
+    return `<section class="card"><button class="tap stack" style="gap:10px" data-a="topic" data-id="${t.id}">
+      <div class="row between"><h2>${esc(t.name)}</h2><span class="small num muted">${topicPct(t)} %</span></div>
+      <div class="bar"><i style="width:${topicPct(t)}%"></i></div>
+      <div class="row wrap" style="gap:6px"><span class="pill num">${t.items.filter(i => i.status === 'aprendido').length}/${t.items.length} aprendido</span>
+        ${t.items.some(i => i.status === 'aprendiendo') ? `<span class="pill pink num">${t.items.filter(i => i.status === 'aprendiendo').length} en curso</span>` : ''}
+        ${hard ? `<span class="pill warn num">${hard} me cuesta${hard > 1 ? 'n' : ''}</span>` : ''}
+        <span class="pill num">${t.resources.length} recurso${t.resources.length === 1 ? '' : 's'}</span></div></button></section>`; }).join('')}
+  <section class="card"><h3>Nuevo tema</h3><form class="row" data-form="topic"><input id="nt-topic" name="name" required placeholder="Ej.: Marketing digital, Excel…" aria-label="Nombre del tema"><button class="btn sm">Crear</button></form></section>`;
+}
+
+function topicView(t) {
+  const L = LEARN[t.key] || { resources: [], goals: [] };
+  const items = [...t.items].sort((a, b) => (a.status === 'aprendido') - (b.status === 'aprendido') || (b.hard - a.hard));
+  const sugg = L.goals.filter(g => !t.items.some(i => i.text === g));
+  const recs = L.resources.filter(r => !t.resources.some(x => x.url === r.url));
+  return `<button class="link" data-a="tback">← Aprendizaje</button>
+  <section class="card"><div class="row between"><h2>${esc(t.name)}</h2><span class="pill pink num">${topicPct(t)} %</span></div><div class="bar"><i style="width:${topicPct(t)}%"></i></div>
+    <p class="small muted">Toca el estado de cada cosa para pasarla de pendiente a aprendiendo y a aprendido. Lo que te cuesta sale primero.</p></section>
+  <section class="card"><h2>Lo que quiero aprender</h2>
+    ${items.length ? `<div>${items.map(i => { const st = ITEM_STATUS.find(s => s[0] === i.status) || ITEM_STATUS[0];
+      return `<div class="check"><button class="pill ${st[2]} stbtn" data-a="istat" data-t="${t.id}" data-id="${i.id}" aria-label="Estado: ${st[1]}. Cambiar">${st[1]}</button>
+        <div class="grow stack" style="gap:4px;min-width:0"><p style="${i.status === 'aprendido' ? 'color:var(--muted)' : ''}">${esc(i.text)}</p>
+          <div><button class="hardbtn" data-a="ihard" data-t="${t.id}" data-id="${i.id}" aria-pressed="${!!i.hard}">Me cuesta</button></div></div>
+        <button class="x" data-a="idel" data-t="${t.id}" data-id="${i.id}" aria-label="Quitar ${esc(i.text)}">×</button></div>`; }).join('')}</div>` : '<p class="small muted">Añade lo primero que quieras aprender.</p>'}
+    <form class="stack" data-form="item" data-t="${t.id}" style="gap:8px"><div class="row"><input id="ni-${t.id}" name="text" required placeholder="Algo que quiero aprender o que me cuesta" aria-label="Nueva cosa que aprender"><button class="btn sm">Añadir</button></div>
+      <label class="row small muted" style="gap:8px"><input type="checkbox" id="nh-${t.id}" name="hard" style="width:18px;height:18px;accent-color:var(--pink)"> Me cuesta</label></form></section>
+  ${sugg.length ? `<section class="card"><h3>Ideas para seguir</h3><div class="chips">${sugg.map(g => `<button class="chip" data-a="isug" data-t="${t.id}" data-text="${esc(g)}">+ ${esc(g)}</button>`).join('')}</div></section>` : ''}
+  <section class="card"><h2>Mis recursos</h2>
+    ${t.resources.length ? `<div>${t.resources.map(r => `<div class="check" style="align-items:center">
+      <button class="box" role="checkbox" aria-checked="${!!r.seen}" aria-label="Marcar como visto" data-a="rseen" data-t="${t.id}" data-id="${r.id}">${ICON_CHECK}</button>
+      <div class="grow stack" style="gap:2px;min-width:0"><a class="ext" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.title)}</a><p class="small muted">${esc(r.type)} · ${esc(hostOf(r.url))}${r.note ? ' · ' + esc(r.note) : ''}</p></div>
+      <button class="x" data-a="rdel" data-t="${t.id}" data-id="${r.id}" aria-label="Quitar ${esc(r.title)}">×</button></div>`).join('')}</div>` : '<p class="small muted">Guarda aquí las webs, vídeos y cursos que te gusten para no perderlos.</p>'}
+    <form class="stack" data-form="res" data-t="${t.id}" style="gap:8px">
+      <label class="f">Enlace<input id="ru-${t.id}" name="url" required inputmode="url" placeholder="https://…"></label>
+      <div class="grid2"><label class="f">Nombre (opcional)<input id="rt-${t.id}" name="title"></label>
+        <label class="f">Tipo<select id="ry-${t.id}" name="type">${RES_TYPES.map(x => `<option>${x}</option>`).join('')}</select></label></div>
+      <label class="f">Nota (opcional)<input id="rx-${t.id}" name="note" placeholder="Para qué me sirve"></label>
+      <button class="btn quiet">Guardar enlace</button></form></section>
+  ${recs.length ? `<section class="card"><h2>Recomendados</h2>${recs.map(r => `<div class="list-item" style="align-items:flex-start"><div class="grow stack" style="gap:4px;min-width:0">
+      <div class="row wrap" style="gap:6px"><a class="ext" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.name)}</a><span class="pill">${esc(r.type)}</span>${r.free ? '<span class="pill ok">gratis</span>' : ''}</div>
+      <p class="small">${esc(r.why)}</p></div><button class="btn ghost sm" data-a="rsave" data-t="${t.id}" data-url="${esc(r.url)}">Guardar</button></div>`).join('')}</section>` : ''}
+  ${aiCard('learn', t.id, 'Claude mira lo que llevas aprendido y lo que te cuesta, y te propone un plan para esta semana.', '¿Algo concreto? (opcional)', t.ai)}
+  <section class="card"><div class="row between"><span class="small muted">Borrar el tema y todo lo que tiene</span>
+    ${UI.confirmDel === t.id ? `<div class="row"><button class="btn sm" data-a="tdelok" data-id="${t.id}">Borrar</button><button class="btn sm quiet" data-a="nodel">No</button></div>` : `<button class="link" data-a="tdel" data-id="${t.id}">Borrar</button>`}</div></section>`;
+}
+
+/* ============ Pregúntale a Claude (capacidad `sample`, solo dentro de Claude) ============ */
+let SAMPLE = null, AI_CTL = null;
+(async () => {
+  try { SAMPLE = (await window.claude?.use?.('sample')) || null; } catch (e) { SAMPLE = null; }
+  if (SAMPLE) document.querySelectorAll('.ai-only').forEach(el => el.hidden = false);
+})();
+function aiCard(kind, id, desc, ph, saved) {
+  return `<section class="card ai-only" ${SAMPLE ? '' : 'hidden'}><div class="row between"><h2>Pregúntale a Claude</h2><span class="pill pink">IA</span></div>
+    <p class="small muted">${desc}</p>
+    <form class="stack" data-form="ask" data-kind="${kind}" data-id="${id}" style="gap:8px"><textarea id="ax-${id}" name="extra" placeholder="${ph}" style="min-height:60px"></textarea>
+      <div class="row"><button class="btn" id="ab-${id}">${saved ? 'Preguntar otra vez' : 'Preguntar'}</button><button type="button" class="btn quiet" id="as-${id}" data-a="askstop" hidden>Parar</button></div></form>
+    <div class="ai-out" id="ao-${id}" ${saved ? '' : 'hidden'}>${saved ? md(saved.text) + `<p class="small muted num">Respuesta del ${fmtDay(saved.date)}</p>` : ''}</div>
+    <p class="small muted">Se envía a Claude solo lo de esta pantalla, desde tu cuenta.</p></section>`;
+}
+function md(t) {
+  const inline = s => s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<i>$2</i>');
+  let html = '', list = false;
+  for (const raw of esc(t).split('\n')) {
+    const l = raw.trim(), li = /^(?:[-*•]|\d+[.)])\s+(.*)/.exec(l);
+    if (li) { if (!list) { html += '<ul>'; list = true; } html += `<li>${inline(li[1])}</li>`; continue; }
+    if (list) { html += '</ul>'; list = false; }
+    if (!l) continue;
+    const h = /^#{1,4}\s+(.*)/.exec(l);
+    html += h ? `<h3>${inline(h[1])}</h3>` : `<p>${inline(l)}</p>`;
+  }
+  return html + (list ? '</ul>' : '');
+}
+const AI_ERR = { rate_limited: 'Has preguntado mucho seguido. Prueba dentro de un rato.', refused: 'Claude no ha podido responder a esto. Prueba a contarlo de otra forma.',
+  session_expired: 'Vuelve a iniciar sesión en Claude y pregunta otra vez.', prompt_too_large: 'Es demasiado texto. Acórtalo un poco.', empty_completion: 'No ha llegado respuesta. Prueba a contarlo de otra forma.' };
+const AI_OFF = ['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'];
+function aiPrompt(kind, id, extra) {
+  const age = ageOf(S.profile.birth);
+  if (kind === 'rel') {
+    const e = S.rel.find(x => x.id === id);
+    const notes = (e.notes || []).slice(-3).map(n => '- ' + n.text).join('\n');
+    return `Eres una guía cálida y honesta de crecimiento personal. Una mujer de ${age} años que vive en España quiere entender y mejorar una actitud suya en su relación con ${{ pareja: 'su pareja', familia: 'su familia', amigos: 'sus amigos' }[e.area]}.
+Situación que ha elegido: ${patLabel(e.pattern)}.
+Lo que cuenta: """${e.text}"""
+${notes ? `Reflexiones que ya ha escrito:\n${notes}\n` : ''}${extra ? `Añade: """${extra}"""\n` : ''}Está leyendo "Los 7 hábitos de la gente altamente efectiva" de Covey.
+
+Responde en español de España, en segunda persona, sin diagnosticar ni culpabilizar, en menos de 300 palabras, con este formato Markdown:
+**Lo que puede haber debajo**: 2-3 frases.
+**Preguntas para ti**: 3 preguntas en lista.
+**Para leer**: 2 libros con edición en español (título — autor: por qué) y 1 texto o charla breve y gratuita (título y autor, sin enlaces).
+**Un paso pequeño**: una práctica concreta para esta semana.
+Si lo que cuenta sugiere miedo, control, humillación o violencia por parte de la otra persona, dilo con claridad, no lo trates como un problema de su actitud y recomienda pedir ayuda (en España, el 016).`;
+  }
+  const t = S.topics.find(x => x.id === id), by = s => t.items.filter(i => i.status === s).map(i => i.text).join('; ') || 'nada';
+  return `Ayuda a una mujer de ${age} años que vive en España a aprender "${t.name}".
+Ya aprendido: ${by('aprendido')}.
+Aprendiendo ahora: ${by('aprendiendo')}.
+Pendiente: ${by('pendiente')}.
+Le cuesta: ${t.items.filter(i => i.hard && i.status !== 'aprendido').map(i => i.text).join('; ') || 'nada en concreto'}.
+Recursos que tiene guardados: ${t.resources.map(r => r.title).join('; ') || 'ninguno'}.
+${extra ? `Pide además: """${extra}"""\n` : ''}
+Responde en español de España, en segunda persona, en menos de 250 palabras, con este formato Markdown:
+**Esta semana**: plan de 3 a 5 pasos concretos de 15-30 minutos al día, empezando por lo que le cuesta.
+**Para practicar lo que te cuesta**: 2 ejercicios concretos.
+**Lo siguiente**: qué aprender después y por qué.
+No inventes enlaces: si recomiendas un recurso, di solo su nombre.`;
+}
+async function ask(kind, id, extra) {
+  if (!SAMPLE) return;
+  const out = document.getElementById('ao-' + id), btn = document.getElementById('ab-' + id), stop = document.getElementById('as-' + id);
+  AI_CTL = new AbortController();
+  out.hidden = false; out.innerHTML = '<p class="muted">Pensando…</p>'; btn.disabled = true; stop.hidden = false;
+  const target = kind === 'rel' ? S.rel.find(x => x.id === id) : S.topics.find(x => x.id === id);
+  try {
+    const { text } = await SAMPLE(aiPrompt(kind, id, extra), { signal: AI_CTL.signal, onText: ({ text }) => { out.innerHTML = md(text); } });
+    target.ai = { text, date: today() }; save();
+    out.innerHTML = md(text) + `<p class="small muted num">Respuesta del ${fmtDay(today())}</p>`;
+  } catch (e) {
+    if (AI_OFF.includes(e.code)) { SAMPLE = null; document.querySelectorAll('.ai-only').forEach(el => el.hidden = true); return; }
+    const keep = e.code === 'refused' ? '' : (e.text ? md(e.text) : '');
+    out.innerHTML = keep + (e.code === 'cancelled' ? '' : `<p class="small" style="color:var(--warn)">${AI_ERR[e.code] || 'Se ha cortado la conexión. Vuelve a intentarlo.'}</p>`);
+    if (!keep && e.code === 'cancelled') out.hidden = true;
+  } finally { btn.disabled = false; stop.hidden = true; AI_CTL = null; }
+}
+
 /* ============ Hojas (formularios) ============ */
 function sheet() {
   const s = UI.sheet; if (!s) return '';
@@ -704,10 +939,15 @@ function sheet() {
     <label class="f">Estado<select id="b-status" name="status"><option>leyendo</option><option>pendiente</option><option>leído</option></select></label>
     <button class="btn">Guardar libro</button></form>`;
   if (s.type === 'learning') { const bid = s.book || (S.books.find(b => b.status === 'leyendo') || S.books[0] || {}).id; const b = S.books.find(x => x.id === bid) || { chapters: [] };
-    body = `<h2>Nuevo aprendizaje</h2><form class="stack" data-form="learning">
+    body = `<h2>Nueva idea</h2><form class="stack" data-form="learning">
     <label class="f">Libro<select id="l-book" name="bookId">${S.books.map(x => `<option value="${x.id}" ${x.id === bid ? 'selected' : ''}>${esc(x.title)}</option>`).join('')}</select></label>
     ${b.chapters.length ? `<label class="f">Capítulo<select id="l-ch" name="chapter"><option value="">—</option>${b.chapters.map(c => `<option value="${c.id}">${esc(c.title)}</option>`).join('')}</select></label>` : ''}
     <label class="f">Qué me llevo<textarea id="l-text" name="text" required placeholder="Con tus palabras, para que te lo recuerde"></textarea></label>
+    <button class="btn">Guardar</button></form>`; }
+  if (s.type === 'rel') { const area = UI.relArea, pats = REL_PATTERNS.filter(p => !p[2] || p[2].includes(area));
+    body = `<h2>${areaLabel(area)} · algo de mi actitud</h2><form class="stack" data-form="rel">
+    <label class="f">¿Qué te pasa?<select id="rl-pat" name="pattern">${pats.map(([k, l]) => `<option value="${k}" ${k === s.pattern ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
+    <label class="f">Cuéntalo con tus palabras<textarea id="rl-text" name="text" required placeholder="Qué pasó, qué hice yo y cómo me sentí. Solo lo ves tú."></textarea></label>
     <button class="btn">Guardar</button></form>`; }
   if (s.type === 'weight') body = `<h2>Apuntar peso</h2><form class="stack" data-form="weight">
     <div class="grid2"><label class="f">Kg<input id="w-kg" name="kg" type="number" step="0.1" inputmode="decimal" required value="${lastWeight()}"></label>
@@ -734,12 +974,13 @@ const TABS = [
   ['mente', 'Mente', '<path d="M4 5.5C6.5 4 9.5 4 12 6c2.5-2 5.5-2 8-.5V19c-2.5-1.5-5.5-1.5-8 .5-2.5-2-5.5-2-8-.5z"/><path d="M12 6v13.5"/>'],
   ['cuerpo', 'Cuerpo', '<path d="M6.5 8v8M17.5 8v8M3.5 10.5v3M20.5 10.5v3M6.5 12h11"/>'],
   ['emocion', 'Emoción', '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>'],
+  ['relaciones', 'Relaciones', '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c.6-3.3 2.8-5.2 5.5-5.2s4.9 1.9 5.5 5.2"/><circle cx="16.8" cy="9.2" r="2.5"/><path d="M15.6 14.4c2.6-.4 4.5 1.4 5 4.6"/>'],
   ['proyectos', 'Proyectos', '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>'],
 ];
 let toastT;
 function toast(msg) { clearTimeout(toastT); const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.querySelector('.toast')?.remove(); document.body.appendChild(t); toastT = setTimeout(() => t.remove(), 1800); }
 function render() {
-  const v = { home: viewHome, mente: viewMind, cuerpo: viewBody, emocion: viewEmotion, proyectos: viewProjects, perfil: viewProfile }[UI.tab] || viewHome;
+  const v = { home: viewHome, mente: viewMind, cuerpo: viewBody, emocion: viewEmotion, relaciones: viewRel, proyectos: viewProjects, perfil: viewProfile }[UI.tab] || viewHome;
   document.getElementById('root').innerHTML = v();
   document.getElementById('tabs').innerHTML = TABS.map(([k, l, d]) => `<button data-a="go" data-tab="${k}" ${UI.tab === k ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>${l}</button>`).join('');
   document.getElementById('layer').innerHTML = sheet();
@@ -750,13 +991,38 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-a]'); if (!el) return;
   const a = el.dataset.a, d = el.dataset;
   if (a === 'close') { if (e.target !== el) return; UI.sheet = null; return render(); }
-  if (a === 'pstatus' || a === 'club') return;
-  if (a === 'go') { UI.tab = d.tab; UI.bookId = null; UI.confirmReset = false; try { localStorage.setItem(KEY + '.tab', d.tab === 'perfil' ? 'home' : d.tab); } catch (_) {} window.scrollTo(0, 0); return render(); }
+  if (a === 'pstatus' || a === 'club' || a === 'relstatus') return;
+  if (a === 'go') { UI.tab = d.tab; UI.bookId = null; UI.topicId = null; UI.relId = null; UI.confirmReset = false; UI.confirmDel = null; try { localStorage.setItem(KEY + '.tab', d.tab === 'perfil' ? 'home' : d.tab); } catch (_) {} window.scrollTo(0, 0); return render(); }
   if (a === 'mind') { UI.mind = d.k; UI.bookId = null; return render(); }
   if (a === 'body') { UI.body = d.k; return render(); }
   if (a === 'book') { UI.tab = 'mente'; UI.bookId = d.id; window.scrollTo(0, 0); return render(); }
   if (a === 'back') { UI.bookId = null; return render(); }
   if (a === 'sheet') { UI.sheet = { type: d.s, plan: d.plan, book: d.book }; return render(); }
+  if (a === 'marea') { UI.mindArea = d.k; UI.topicId = null; return render(); }
+  if (a === 'topic') { UI.topicId = d.id; UI.confirmDel = null; window.scrollTo(0, 0); return render(); }
+  if (a === 'tback') { UI.topicId = null; return render(); }
+  if (a === 'relarea') { UI.relArea = d.k; UI.relId = null; return render(); }
+  if (a === 'rel') { UI.relId = d.id; UI.confirmDel = null; window.scrollTo(0, 0); return render(); }
+  if (a === 'relback') { UI.relId = null; return render(); }
+  if (a === 'relpat') { UI.sheet = { type: 'rel', pattern: d.k }; return render(); }
+  if (a === 'relprac') { const id = 'r-' + d.id, i = S.active.indexOf(id); i >= 0 ? S.active.splice(i, 1) : S.active.push(id); return commit(i >= 0 ? 'Práctica desactivada' : 'Práctica activada'); }
+  if (a === 'relbook') { if (!hasBook(d.t)) S.books.push({ id: uid(), title: d.t, author: d.au, cat: 'Psicología', pages: 250, page: 0, status: 'pendiente', chapters: [] }); return commit('Añadido a pendientes'); }
+  if (a === 'reldel' || a === 'tdel') { UI.confirmDel = d.id; return render(); }
+  if (a === 'nodel') { UI.confirmDel = null; return render(); }
+  if (a === 'reldelok') { S.rel = S.rel.filter(e => e.id !== d.id); S.active = S.active.filter(x => x !== 'r-' + d.id); delete S.checks['r-' + d.id]; UI.relId = null; UI.confirmDel = null; return commit('Borrado'); }
+  if (a === 'tdelok') { S.topics = S.topics.filter(t => t.id !== d.id); UI.topicId = null; UI.confirmDel = null; return commit('Tema borrado'); }
+  if (a === 'askstop') { AI_CTL?.abort(); return; }
+  const topic = d.t && S.topics.find(t => t.id === d.t);
+  if (topic) {
+    const item = topic.items.find(i => i.id === d.id), res = topic.resources.find(r => r.id === d.id);
+    if (a === 'istat') { const order = ITEM_STATUS.map(s => s[0]); item.status = order[(order.indexOf(item.status) + 1) % order.length]; return commit(); }
+    if (a === 'ihard') { item.hard = !item.hard; return commit(); }
+    if (a === 'idel') { topic.items = topic.items.filter(i => i.id !== d.id); return commit(); }
+    if (a === 'isug') { topic.items.push({ id: uid(), text: d.text, status: 'pendiente', hard: false }); return commit('Añadido'); }
+    if (a === 'rseen') { res.seen = !res.seen; return commit(); }
+    if (a === 'rdel') { topic.resources = topic.resources.filter(r => r.id !== d.id); return commit(); }
+    if (a === 'rsave') { const r = (LEARN[topic.key] || { resources: [] }).resources.find(x => x.url === d.url); if (r) topic.resources.push({ id: uid(), title: r.name, url: r.url, type: r.type, note: '', seen: false }); return commit('Guardado'); }
+  }
   if (a === 'toggle') {
     const list = S.checks[d.id] = S.checks[d.id] || [];
     if (d.type === 'once') { if (list.length) S.checks[d.id] = []; else list.push(today()); }
@@ -776,6 +1042,7 @@ document.addEventListener('change', e => {
   const el = e.target;
   if (el.dataset.a === 'pstatus') { S.projects.find(p => p.id === el.dataset.id).status = el.value; commit(); document.getElementById(el.id)?.focus(); }
   if (el.dataset.a === 'club') { S.profile.club = el.value; save(); el.closest('section').outerHTML = gymCard(); document.getElementById('f-club').focus(); }
+  if (el.dataset.a === 'relstatus') { S.rel.find(x => x.id === el.dataset.id).status = el.value; save(); toast('Guardado'); }
   if (el.id === 'l-book') { UI.sheet = { type: 'learning', book: el.value }; render(); }
 });
 document.addEventListener('submit', e => {
@@ -787,6 +1054,13 @@ document.addEventListener('submit', e => {
   if (kind === 'weight') { S.weights = S.weights.filter(w => w.date !== fd.date); S.weights.push({ date: fd.date, kg: n(fd.kg) }); S.weights.sort((a, b) => a.date.localeCompare(b.date)); }
   if (kind === 'measure') { const m = { date: fd.date }; ['cintura', 'cadera', 'gluteo', 'muslo', 'brazo'].forEach(k => m[k] = n(fd[k])); S.measures = S.measures.filter(x => x.date !== fd.date); S.measures.push(m); }
   if (kind === 'project') S.projects.push({ id: uid(), name: fd.name.trim(), area: fd.area.trim(), status: 'idea', tasks: fd.tasks.split('\n').map(t => t.trim()).filter(Boolean).map(text => ({ id: uid(), text, done: false })) });
+  if (kind === 'ask') { ask(f.dataset.kind, f.dataset.id, (fd.extra || '').trim()); return; }
+  if (kind === 'rel') { const id = uid(); S.rel.push({ id, area: UI.relArea, pattern: fd.pattern, text: fd.text.trim(), date: today(), status: 'abierto', notes: [], practice: relContent(fd.pattern).practice }); UI.sheet = null; UI.relId = id; window.scrollTo(0, 0); return commit('Guardado'); }
+  if (kind === 'relnote') { const e = S.rel.find(x => x.id === f.dataset.id); (e.notes = e.notes || []).push({ date: today(), text: fd.text.trim() }); }
+  if (kind === 'topic') { const id = uid(); S.topics.push({ id, key: '', name: fd.name.trim(), items: [], resources: [] }); UI.topicId = id; }
+  if (kind === 'item') { if (!fd.text.trim()) return; S.topics.find(t => t.id === f.dataset.t).items.push({ id: uid(), text: fd.text.trim(), status: 'pendiente', hard: !!fd.hard }); return commit('Añadido'); }
+  if (kind === 'res') { const url = safeUrl(fd.url); if (!url) return toast('Ese enlace no parece válido');
+    S.topics.find(t => t.id === f.dataset.t).resources.push({ id: uid(), url, title: fd.title.trim() || hostOf(url), type: fd.type, note: fd.note.trim(), seen: false }); return commit('Enlace guardado'); }
   if (kind === 'task') { if (!fd.text.trim()) return; S.projects.find(p => p.id === f.dataset.p).tasks.push({ id: uid(), text: fd.text.trim(), done: false }); return commit(); }
   if (kind === 'log') { const ex = Object.keys(EX).filter(id => fd['x-' + id]).map(id => ({ id, sets: n(fd['s-' + id]) || 1 }));
     if (!ex.length) return toast('Marca al menos un ejercicio'); S.workouts.push({ id: uid(), date: fd.date, name: fd.name.trim() || 'Entreno', ex }); }
