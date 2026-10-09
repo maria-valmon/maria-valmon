@@ -177,13 +177,13 @@ const SEVEN = {
 
 /* Ejercicios. maq = dónde hacerlo en ON AIR · alt = si la máquina está ocupada o tu club no la tiene */
 const EX = {
-  hipthrust: { n: 'Hip thrust en máquina', maq: 'Glutebuilder (Zona Booty), máquina de la Zona Ladies o Hammer Glute Drive', alt: 'Hip thrust con barra en banco', m: { gluteos: 1, isquios: .4, cuadriceps: .3, aductores: .3 } },
+  hipthrust: { n: 'Hip thrust en máquina', maq: 'Máquina de hip thrust (Glutebuilder en la Zona Booty, si tu club la tiene)', alt: 'Hip thrust con barra en banco', m: { gluteos: 1, isquios: .4, cuadriceps: .3, aductores: .3 } },
   hipbarra: { n: 'Hip thrust con barra', maq: 'Barra, discos y banco (peso libre)', alt: 'Hip thrust en multipower', m: { gluteos: 1, isquios: .4, cuadriceps: .3, aductores: .3 } },
   rdl: { n: 'Peso muerto rumano', maq: 'Barra en rack (peso libre)', alt: 'Con mancuernas', m: { isquios: 1, gluteos: .6, lumbar: .5, aductores: .4, trapecio: .3 } },
   bulgara: { n: 'Sentadilla búlgara', maq: 'Mancuernas y banco plano', alt: 'Zancada atrás en multipower', m: { gluteos: 1, cuadriceps: .7, aductores: .5 } },
   femoral: { n: 'Curl femoral (sentado o tumbado)', maq: 'Zona de máquinas guiadas', alt: 'Curl de pie en polea baja con tobillera', m: { isquios: 1, gemelos: .3 } },
-  abduccion: { n: 'Abducción en máquina', maq: 'Abductora o Glutebuilder 3D Multi-Abductor', alt: 'Abducción de pie en polea baja', m: { gluteos: 1 } },
-  patada: { n: 'Patada de glúteo', maq: 'Glutebuilder Pendulum Kickback o máquina de la Zona Ladies', alt: 'Patada en polea baja con tobillera', m: { gluteos: 1, isquios: .3 } },
+  abduccion: { n: 'Abducción en máquina', maq: 'Abductora (o la de Glutebuilder, si tu club tiene Zona Booty)', alt: 'Abducción de pie en polea baja', m: { gluteos: 1 } },
+  patada: { n: 'Patada de glúteo', maq: 'Máquina de patada / kickback (Zona Booty, si tu club la tiene)', alt: 'Patada en polea baja con tobillera', m: { gluteos: 1, isquios: .3 } },
   hiper: { n: 'Hiperextensión 45° de glúteo', maq: 'Banco de hiperextensión', alt: 'Pull-through en polea baja', m: { gluteos: 1, isquios: .6, lumbar: .5 } },
   prensa: { n: 'Prensa de piernas', maq: 'Prensa de discos o de placas', alt: 'Sentadilla goblet', m: { cuadriceps: 1, gluteos: .4, aductores: .4 } },
   jalon: { n: 'Jalón al pecho', maq: 'Jalón de placas o Hammer Iso-Lateral', alt: 'Jalón en polea alta', m: { espalda: 1, biceps: .5, hombros: .3 } },
@@ -214,9 +214,9 @@ const MUSCLES = {
 };
 
 const PLAN = [
-  { id: 'p1', day: 'Lunes', name: 'Glúteo · fuerza', focus: '6-8 reps dejando 1-2 en reserva. Descanso 2-3 min en hip thrust y rumano.', ex: [['hipthrust', '4×6-8'], ['rdl', '3×6-8'], ['bulgara', '3×8 por pierna'], ['femoral', '3×10-12'], ['abduccion', '2×12-15']] },
+  { id: 'p1', day: 'Lunes', name: 'Glúteo · fuerza', focus: 'Hip thrust y rumano a 6-8 reps dejando 1-2 en reserva, con 2-3 min de descanso. El resto, a las reps indicadas.', ex: [['hipthrust', '4×6-8'], ['rdl', '3×6-8'], ['bulgara', '3×8 por pierna'], ['femoral', '3×10-12'], ['abduccion', '2×12-15']] },
   { id: 'p2', day: 'Martes', name: 'Torso', focus: 'Espalda, pecho y hombro para la postura y una cintura visualmente más estrecha. 8-15 reps.', ex: [['jalon', '3×8-10'], ['pressincl', '3×8-10'], ['remoapoyo', '3×10-12'], ['presshombro', '3×8-10'], ['laterales', '3×12-15'], ['facepull', '3×12-15']] },
-  { id: 'p3', day: 'Jueves', name: 'Glúteo · volumen + core', focus: '10-15 reps con 1 s de pausa arriba. Descanso 60-90 s.', ex: [['hipbarra', '3×10-12'], ['hiper', '3×12-15'], ['patada', '2×12-15 por pierna'], ['pallof', '3×10-12 por lado'], ['deadbug', '3×8-10 por lado']] },
+  { id: 'p3', day: 'Jueves', name: 'Glúteo · volumen + core', focus: 'Glúteo a 10-15 reps con 1 s de pausa arriba y 60-90 s de descanso. Core a las reps indicadas.', ex: [['hipbarra', '3×10-12'], ['hiper', '3×12-15'], ['patada', '2×12-15 por pierna'], ['pallof', '3×10-12 por lado'], ['deadbug', '3×8-10 por lado']] },
   { id: 'p4', day: 'Sábado', name: 'Full body + cardio', focus: 'Intensidad moderada y caminata inclinada para gastar más sin robar recuperación al glúteo.', ex: [['prensa', '3×10-12'], ['femoral', '3×10-12'], ['presspecho', '3×10-12'], ['remo', '3×10-12'], ['granjero', '3×30-40 m'], ['cinta', '20-25 min']] },
 ];
 
@@ -565,7 +565,7 @@ function integrations() {
 function bodyWorkouts() {
   return `
   <section class="card"><div class="row between"><h2>Tu plan · glúteo</h2><span class="pill pink">4 días</span></div>
-    <p class="small muted">Glúteo dos días a la semana, con 48 h de descanso entre ellos, más un día de torso y otro de cuerpo entero. Son unas 17 series directas de glúteo por semana. Para reducir abdomen, lo que funciona es el déficit calórico, los pasos diarios y entrenar fuerza. El core está para dar fuerza y postura, no para quemar la grasa de la zona.</p>
+    <p class="small muted">Glúteo dos días a la semana, con al menos 48 h de descanso entre ellos, más un día de torso y otro de cuerpo entero. Son unas 17 series directas de glúteo por semana. Para reducir abdomen, lo que funciona es el déficit calórico, los pasos diarios y entrenar fuerza. El core está para dar fuerza y postura, no para quemar la grasa de la zona.</p>
     ${PLAN.map((p, i) => `<details class="chapter" ${i === 0 ? 'open' : ''}><summary class="row between" style="cursor:pointer;list-style:none">
       <div><p class="kicker">Día ${i + 1} · ${p.day}</p><h3>${esc(p.name)}</h3></div><span class="small muted">${p.ex.length} ej.</span></summary>
       <p class="small muted" style="margin-top:6px">${esc(p.focus)}</p>
@@ -573,7 +573,7 @@ function bodyWorkouts() {
         <div class="row between" style="width:100%;align-items:flex-start"><b class="grow">${esc(EX[id].n)}</b><span class="small num" style="color:var(--pink-soft);white-space:nowrap">${sc}</span></div>
         <p class="small muted">${esc(EX[id].maq)} · <span style="color:var(--fg)">Si no está:</span> ${esc(EX[id].alt)}</p></div>`).join('')}</div>
       <button class="btn sm" data-a="sheet" data-s="log" data-plan="${p.id}">Apuntar este entreno</button></details>`).join('')}
-    <p class="small muted">Todos los días: 8.000–10.000 pasos. Progresión: cuando hagas todas las series en el tope de repeticiones, sube un 2,5–5 % de peso. Cada 6–8 semanas haz una semana suave con un 40 % menos de series.</p>
+    <p class="small muted">Todos los días: 8.000–10.000 pasos. Progresión: cuando hagas todas las series en el tope de repeticiones con buena técnica y dejando 1–2 en reserva, sube un 2,5–5 % de peso. Cada 6–8 semanas haz una semana suave con un 40 % menos de series.</p>
   </section>
   <section class="card"><div class="row between"><h2>Historial</h2><button class="btn sm" data-a="sheet" data-s="log">Entreno libre</button></div>
     ${S.workouts.length ? [...S.workouts].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12).map(w => {
@@ -589,8 +589,8 @@ function gymCard() {
   return `<section class="card"><div class="row between"><h2>Tu gimnasio</h2><span class="pill">ON AIR Fitness</span></div>
     <label class="f">Club<select id="f-club" data-a="club"><option value="">Elige tu club…</option>${Object.keys(CLUBS).map(k => `<option ${k === club ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
     ${c ? `<div class="row wrap"><span class="pill ${c.booty === 'sí' ? 'ok' : c.booty === 'anunciada' ? 'warn' : ''}">Zona Booty: ${c.booty}</span></div><p class="small">${esc(c.info)}</p>
-      <p class="small muted">${c.booty === 'sí' ? 'Haz el hip thrust, la abducción y la patada en las máquinas Glutebuilder.' : 'Si no encuentras la máquina de glúteo, usa la alternativa que aparece debajo de cada ejercicio. Todas se hacen con barra, mancuernas, polea o multipower.'}</p>`
-      : '<p class="small muted">Cada club ON AIR tiene un equipamiento distinto. Elige el tuyo y verás qué máquinas de glúteo tiene.</p>'}
+      <p class="small muted">${c.booty === 'sí' ? 'Tu club tiene Zona Booty con máquinas Glutebuilder: úsalas para el hip thrust, la abducción o la patada si están. Si no, haz la alternativa de cada ejercicio.' : 'Si no encuentras la máquina de glúteo, usa la alternativa que aparece debajo de cada ejercicio. Todas se hacen con barra, mancuernas, polea o multipower.'}</p>`
+      : '<p class="small muted">Cada club ON AIR tiene un equipamiento distinto. Elige el tuyo y verás lo que se sabe de su equipamiento.</p>'}
     <p class="small muted">Datos sacados de la web de ON AIR y de prensa y reseñas (oct. 2026). Puede que falte alguna máquina.</p></section>`;
 }
 function bodyMeasures() {
