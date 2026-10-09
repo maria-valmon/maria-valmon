@@ -237,13 +237,13 @@ const fromKey = k => { const [y, m, d] = k.split('-').map(Number); return new Da
 const fmtDay = k => fromKey(k).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 const uid = () => Math.random().toString(36).slice(2, 9);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ageOf = birth => { const b = fromKey(birth), t = new Date(); let a = t.getFullYear() - b.getFullYear(); if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) a--; return a; };
 const fmt = (n, d = 0) => Number(n).toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d });
 const ICON_CHECK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
 
 /* ============ Estado (localStorage hasta que exista el servidor) ============ */
 const KEY = 'valmon.v1';
 function seed() {
-  const weights = [64.9, 64.7, 64.8, 64.4, 64.3, 64.1, 63.9, 63.8, 63.6].map((kg, i, a) => ({ date: daysAgo((a.length - 1 - i) * 7), kg }));
   const checks = {};
   const mark = (id, list) => { checks[id] = list.map(daysAgo); };
   mark('h1a', [0, 1, 2, 3, 4, 6, 7, 8, 9]);
@@ -257,7 +257,7 @@ function seed() {
   [4, 3, 4, 5, 3, 2, 4, 4, 3, 4, 5, 4].forEach((m, i) => moods[daysAgo(i + 1)] = { m, energy: 3, note: '' });
   return {
     v: 1, example: true,
-    profile: { name: 'María', age: 28, height: 165, goalWeight: 60, stepGoal: 9000, deficit: 400 },
+    profile: { name: 'María', birth: '2003-04-01', height: 169, goalWeight: null, stepGoal: 9000, deficit: 400 },
     books: [
       { ...SEVEN, status: 'leyendo', page: 148 },
       { id: uid(), title: 'Hábitos atómicos', author: 'James Clear', cat: 'Autoayuda', pages: 328, page: 0, status: 'pendiente', chapters: [] },
@@ -269,7 +269,7 @@ function seed() {
       { id: uid(), bookId: 'b7h', chapter: 'h1', text: 'No controlo lo que me pasa, pero sí cómo respondo. Si me quejo de algo, pregúntame qué parte está en mi círculo de influencia.', date: daysAgo(6) },
       { id: uid(), bookId: 'b7h', chapter: 'h2', text: 'Imaginar mi 80 cumpleaños: qué me gustaría que dijeran de mí. Eso es lo que de verdad importa.', date: daysAgo(2) },
     ],
-    weights,
+    weights: [{ date: today(), kg: 67 }],
     measures: [
       { date: daysAgo(28), cintura: 74, cadera: 98, gluteo: 99, muslo: 57, brazo: 28 },
       { date: daysAgo(0), cintura: 72, cadera: 98, gluteo: 100, muslo: 56.5, brazo: 28 },
@@ -287,10 +287,16 @@ function seed() {
 }
 function blank() {
   const s = seed();
-  return { ...s, example: false, books: [{ ...SEVEN, status: 'leyendo', page: 0 }], active: [], checks: {}, learnings: [], weights: [], measures: [], workouts: [], days: {}, moods: {}, projects: [] };
+  return { ...s, profile: { ...S.profile }, weights: S.weights.length ? S.weights.slice(-1) : s.weights, example: false, books: [{ ...SEVEN, status: 'leyendo', page: 0 }], active: [], checks: {}, learnings: [], measures: [], workouts: [], days: {}, moods: {}, projects: [] };
 }
 let S;
 try { S = JSON.parse(localStorage.getItem(KEY)) || seed(); } catch (e) { S = seed(); }
+if (!S.profile.birth) { // v1 → v2: datos reales de María
+  S.profile = { ...S.profile, birth: '2003-04-01', height: 169, goalWeight: null };
+  delete S.profile.age;
+  if (S.example) S.weights = [{ date: today(), kg: 67 }];
+  S.v = 2;
+}
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 
 let UI = { tab: 'home', mind: 'books', bookId: null, body: 'resumen', sheet: null, confirmReset: false };
@@ -323,7 +329,7 @@ function weeklySets() {
 }
 function energy(day = today()) {
   const p = S.profile, kg = lastWeight();
-  const bmr = 10 * kg + 6.25 * p.height - 5 * p.age - 161; // Mifflin-St Jeor, mujer
+  const bmr = 10 * kg + 6.25 * p.height - 5 * ageOf(p.birth) - 161; // Mifflin-St Jeor, mujer
   const steps = (S.days[day] || {}).steps || 0;
   const stepK = steps * kg * 0.0005;               // ~0,03 kcal por paso a 63 kg
   const trained = S.workouts.some(w => w.date === day);
@@ -335,22 +341,22 @@ function energy(day = today()) {
 /* ============ Componentes ============ */
 function weightChart() {
   const pts = S.weights.slice(-12);
-  if (pts.length < 2) return `<p class="muted small">Apunta al menos dos pesajes para ver la línea.</p>`;
+  if (pts.length < 2) return pts.length ? `<p class="small muted">Punto de partida: <b class="num" style="color:var(--fg)">${fmt(pts[0].kg, 1)} kg</b> el ${fmtDay(pts[0].date)}. Pésate una vez por semana, en ayunas, y aquí verás la línea.</p>` : `<p class="muted small">Apunta tu primer pesaje.</p>`;
+  const goal = S.profile.goalWeight;
   const W = 320, H = 150, L = 34, R = 10, T = 12, B = 24;
   const vals = pts.map(p => p.kg);
-  let lo = Math.floor(Math.min(...vals, S.profile.goalWeight) - .5), hi = Math.ceil(Math.max(...vals) + .5);
+  let lo = Math.floor(Math.min(...vals, goal || Infinity) - .5), hi = Math.ceil(Math.max(...vals) + .5);
   const x = i => L + i * (W - L - R) / (pts.length - 1);
   const y = v => T + (hi - v) * (H - T - B) / (hi - lo);
   const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.kg).toFixed(1)}`).join('');
   const area = `${line}L${x(pts.length - 1)},${H - B}L${x(0)},${H - B}Z`;
   const ticks = [lo, (lo + hi) / 2, hi];
-  const gy = y(S.profile.goalWeight);
   const last = pts[pts.length - 1];
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Evolución del peso">
     <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--pink)" stop-opacity=".35"/><stop offset="1" stop-color="var(--pink)" stop-opacity="0"/></linearGradient></defs>
     ${ticks.map(t => `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${y(t) + 4}" text-anchor="end" font-size="10" fill="var(--muted)">${fmt(t, t % 1 ? 1 : 0)}</text>`).join('')}
-    <line x1="${L}" x2="${W - R}" y1="${gy}" y2="${gy}" stroke="var(--pink-soft)" stroke-dasharray="4 4" stroke-width="1"/>
-    <text x="${W - R}" y="${gy - 5}" text-anchor="end" font-size="10" fill="var(--pink-soft)">objetivo ${fmt(S.profile.goalWeight)} kg</text>
+    ${goal ? `<line x1="${L}" x2="${W - R}" y1="${y(goal)}" y2="${y(goal)}" stroke="var(--pink-soft)" stroke-dasharray="4 4" stroke-width="1"/>
+    <text x="${W - R}" y="${y(goal) - 5}" text-anchor="end" font-size="10" fill="var(--pink-soft)">objetivo ${fmt(goal, 1)} kg</text>` : ''}
     <path d="${area}" fill="url(#wg)"/>
     <path d="${line}" fill="none" stroke="var(--pink)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
     <circle cx="${x(pts.length - 1)}" cy="${y(last.kg)}" r="5" fill="var(--pink)" stroke="var(--bg)" stroke-width="2"/>
@@ -590,12 +596,12 @@ function bodyCalories() {
       <tr><td>Entreno</td><td>${fmt(en.workK)} kcal</td></tr>
       <tr><td><b>Gasto total</b></td><td><b>${fmt(en.tdee)} kcal</b></td></tr>
     </tbody></table>
-    <p class="small muted">Estimación con la fórmula Mifflin-St Jeor y tu último peso (${fmt(lastWeight(), 1)} kg). Con Apple Salud conectada usaremos tus calorías activas reales.</p></section>
+    <p class="small muted">Estimación con la fórmula Mifflin-St Jeor para ${ageOf(p.birth)} años, ${p.height} cm y ${fmt(lastWeight(), 1)} kg (tu último pesaje). Con Apple Salud conectada usaremos tus calorías activas reales.</p></section>
   <section class="card"><h2>Mis datos</h2>
     <form class="grid2" data-form="profile">
-      <label class="f">Edad<input id="f-age" name="age" type="number" value="${p.age}"></label>
+      <label class="f">Nacimiento<input id="f-birth" name="birth" type="date" value="${p.birth}"></label>
       <label class="f">Altura (cm)<input id="f-height" name="height" type="number" value="${p.height}"></label>
-      <label class="f">Peso objetivo<input id="f-goal" name="goalWeight" type="number" step="0.1" value="${p.goalWeight}"></label>
+      <label class="f">Peso objetivo (opcional)<input id="f-goal" name="goalWeight" type="number" step="0.1" value="${p.goalWeight ?? ''}" placeholder="—"></label>
       <label class="f">Déficit diario<input id="f-deficit" name="deficit" type="number" step="50" value="${p.deficit}"></label>
       <label class="f">Meta de pasos<input id="f-stepgoal" name="stepGoal" type="number" step="500" value="${p.stepGoal}"></label>
       <button class="btn quiet" style="align-self:end">Guardar</button></form></section>`;
@@ -742,7 +748,7 @@ document.addEventListener('submit', e => {
     if (!ex.length) return toast('Marca al menos un ejercicio'); S.workouts.push({ id: uid(), date: fd.date, name: fd.name.trim() || 'Entreno', ex }); }
   if (kind === 'page') { const b = S.books.find(x => x.id === UI.bookId); b.page = Math.min(b.pages, Math.max(0, n(fd.page) || 0)); b.status = fd.status; }
   if (kind === 'day') S.days[today()] = { ...(S.days[today()] || {}), steps: n(fd.steps) || 0, intake: n(fd.intake) || 0 };
-  if (kind === 'profile') ['age', 'height', 'goalWeight', 'deficit', 'stepGoal'].forEach(k => { if (n(fd[k]) != null) S.profile[k] = n(fd[k]); });
+  if (kind === 'profile') { ['height', 'deficit', 'stepGoal'].forEach(k => { if (n(fd[k]) != null) S.profile[k] = n(fd[k]); }); S.profile.goalWeight = n(fd.goalWeight); if (fd.birth) S.profile.birth = fd.birth; }
   if (kind === 'moodnote') S.moods[today()] = { ...(S.moods[today()] || {}), note: fd.note };
   UI.sheet = null; commit('Guardado');
 });
