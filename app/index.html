@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0a0c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<style>:root{padding-top:env(safe-area-inset-top,0px)}body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Valmon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: app de una columna para el móvil, tarjetas-widget apiladas y barra de pestañas fija abajo.
+   Un único aspecto, negro y rosa, elegido a propósito (sin modo claro). */
+:root {
+  --bg: #0b0a0c;
+  --surface: #151317;
+  --surface-2: #1e1b21;
+  --line: #2c2730;
+  --fg: #f6eef3;
+  --muted: #a3949d;
+  --pink: #ff4fa3;
+  --pink-soft: #ff9fcc;
+  --pink-ink: #1a0510;
+  --muscle-off: #2a2530;
+  --ok: #5fd6a4;
+  --warn: #ffc46b;
+  --display: "Bricolage Grotesque", "Manrope", system-ui, sans-serif;
+  --body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r: 18px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
+
+.app { max-width: 480px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 110px; display: flex; flex-direction: column; gap: 18px; }
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+h1 { font-size: 32px; font-weight: 800; line-height: 1.05; }
+h1 em { font-style: normal; color: var(--pink); }
+h2 { font-size: 20px; font-weight: 700; }
+h3 { font-size: 16px; font-weight: 700; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.num { font-variant-numeric: tabular-nums; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.between { justify-content: space-between; }
+.wrap { flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card.hot { background: var(--pink); color: var(--pink-ink); border-color: var(--pink); }
+.card.hot .muted { color: color-mix(in srgb, var(--pink-ink) 70%, var(--pink)); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stat { font-family: var(--display); font-size: 30px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat small { font-size: 14px; font-weight: 600; color: var(--muted); margin-left: 3px; }
+
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
+.pill.pink { background: color-mix(in srgb, var(--pink) 18%, transparent); color: var(--pink-soft); border-color: color-mix(in srgb, var(--pink) 40%, transparent); }
+.pill.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.pill.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+
+.btn { border: 0; border-radius: 999px; padding: 10px 16px; font-weight: 700; background: var(--pink); color: var(--pink-ink); }
+.btn.ghost { background: transparent; color: var(--pink-soft); border: 1px solid color-mix(in srgb, var(--pink) 45%, transparent); }
+.btn.quiet { background: var(--surface-2); color: var(--fg); }
+.btn.sm { padding: 7px 12px; font-size: 13px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.link { background: none; border: 0; padding: 0; color: var(--pink-soft); font-weight: 700; font-size: 13px; }
+
+.seg { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.seg button { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 8px 14px; font-weight: 600; font-size: 14px; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+.bar { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--pink); border-radius: 99px; }
+
+.check { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--line); }
+.check:first-child { border-top: 0; padding-top: 0; }
+.box { flex: none; width: 28px; height: 28px; border-radius: 9px; border: 2px solid var(--pink); background: transparent; display: grid; place-items: center; color: var(--pink-ink); padding: 0; }
+.box[aria-checked="true"] { background: var(--pink); }
+.box svg { width: 16px; height: 16px; opacity: 0; }
+.box[aria-checked="true"] svg { opacity: 1; }
+.streak { font-size: 12px; font-weight: 700; color: var(--pink-soft); font-variant-numeric: tabular-nums; }
+.dots { display: flex; gap: 3px; margin-top: 6px; }
+.dots i { width: 9px; height: 9px; border-radius: 3px; background: var(--surface-2); }
+.dots i.on { background: var(--pink); }
+
+.list-item { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.list-item:first-child { border-top: 0; padding-top: 0; }
+.cover { flex: none; width: 46px; height: 64px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line); display: grid; place-items: center; font-family: var(--display); font-weight: 800; color: var(--pink); font-size: 18px; }
+.cover.pink { background: var(--pink); color: var(--pink-ink); border-color: var(--pink); }
+.tap { background: none; border: 0; padding: 0; text-align: left; width: 100%; color: inherit; }
+
+.quote { font-family: var(--display); font-size: 19px; font-weight: 500; line-height: 1.3; }
+.chapter { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+.chapter:first-of-type { border-top: 0; padding-top: 0; }
+.kicker { font-size: 12px; font-weight: 700; color: var(--pink); letter-spacing: .06em; text-transform: uppercase; }
+
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px; }
+th, td { text-align: right; padding: 8px 6px; border-top: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; border-top: 0; }
+.scroll-x { overflow-x: auto; }
+
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
+.tabs nav { max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
+.tabs button { background: none; border: 0; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; padding: 6px 0; border-radius: 12px; }
+.tabs button svg { width: 22px; height: 22px; }
+.tabs button[aria-current="page"] { color: var(--pink); }
+
+.sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 20; display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--surface); border: 1px solid var(--line); border-bottom: 0; border-radius: 24px 24px 0 0; width: 100%; max-width: 480px; max-height: 88%; overflow-y: auto; padding: 20px 16px calc(24px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; }
+label.f { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); font-weight: 600; min-width: 0; }
+input, select, textarea { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px; width: 100%; min-width: 0; font-size: 16px; }
+textarea { min-height: 84px; resize: vertical; }
+.ex-pick { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.ex-pick input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--pink); flex: none; }
+.ex-pick input[type="number"] { width: 64px; flex: none; padding: 6px 8px; }
+
+.mood { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.mood button { border: 1px solid var(--line); background: var(--surface-2); border-radius: 12px; padding: 10px 2px; font-size: 12px; font-weight: 600; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.mood button b { font-family: var(--display); font-size: 20px; color: var(--fg); }
+.mood button[aria-pressed="true"] { background: var(--pink); color: var(--pink-ink); border-color: var(--pink); }
+.mood button[aria-pressed="true"] b { color: var(--pink-ink); }
+.strip { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; }
+.strip i { aspect-ratio: 1; border-radius: 5px; background: var(--surface-2); max-width: 100%; }
+
+.banner { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 10px 14px; border-radius: 14px; border: 1px dashed color-mix(in srgb, var(--pink) 50%, transparent); font-size: 13px; color: var(--pink-soft); }
+.toast { position: fixed; left: 50%; bottom: calc(88px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 700; font-size: 14px; z-index: 30; }
+svg text { font-family: var(--body); }
+@media (prefers-reduced-motion: no-preference) {
+  .sheet { animation: up .22s ease-out; }
+  @keyframes up { from { transform: translateY(30px); opacity: .6; } }
+}
+</style>
+
+<div id="root" class="app"></div>
+<div class="tabs"><nav id="tabs" aria-label="Secciones"></nav></div>
+<div id="layer"></div>
+
+<script>
+/* ============ Datos fijos: libro, biblioteca de ejercicios, plan, recomendaciones ============ */
+const SEVEN = {
+  id: 'b7h', title: 'Los 7 hábitos de la gente altamente efectiva', author: 'Stephen R. Covey', cat: 'Autoayuda', pages: 432,
+  chapters: [
+    { id: 'c0', title: 'De dentro hacia fuera', idea: 'Lo que ves depende de tus paradigmas. Un cambio que dura empieza por tu carácter y no por técnicas de imagen.',
+      challenges: [{ id: 'c0a', type: 'daily', text: 'Pilla un juicio rápido que hagas hoy y míralo desde otro punto de vista.' }] },
+    { id: 'h1', title: 'Hábito 1 · Sé proactiva', idea: 'Entre estímulo y respuesta hay un espacio en el que eliges. Pon tu energía en tu círculo de influencia, no en el de preocupación.',
+      challenges: [
+        { id: 'h1a', type: 'daily', text: 'Escucha tu lenguaje: cambia "tengo que / no puedo" por "elijo / prefiero".' },
+        { id: 'h1b', type: 'daily', text: 'Haz una acción concreta dentro de tu círculo de influencia.' },
+        { id: 'h1c', type: 'daily', text: 'Prueba de 30 días: cumple un pequeño compromiso contigo misma.' }] },
+    { id: 'h2', title: 'Hábito 2 · Empieza con un fin en mente', idea: 'Todo se crea dos veces: primero en la mente, luego en la realidad. Una misión personal guía tus decisiones.',
+      challenges: [
+        { id: 'h2a', type: 'once', text: 'Escribe tu misión personal (luego revísala cada mes).' },
+        { id: 'h2b', type: 'daily', text: 'Antes de empezar el día, decide qué quieres que haya pasado al acabarlo.' },
+        { id: 'h2c', type: 'once', text: 'Haz la lista de tus roles y un objetivo para cada uno.' }] },
+    { id: 'h3', title: 'Hábito 3 · Primero lo primero', idea: 'Lo importante casi nunca es urgente. Vive en el cuadrante II: planificar, prevenir, relaciones y salud.',
+      challenges: [
+        { id: 'h3a', type: 'daily', text: 'Dedica 30 min a algo importante y no urgente.' },
+        { id: 'h3b', type: 'weekly', text: 'Planifica la semana por roles y objetivos (domingo).' },
+        { id: 'h3c', type: 'daily', text: 'Di que no a una cosa que no esté alineada con tus prioridades.' }] },
+    { id: 'h4', title: 'Hábito 4 · Piensa en ganar/ganar', idea: 'Las relaciones son una cuenta bancaria emocional: cada gesto de confianza es un depósito.',
+      challenges: [
+        { id: 'h4a', type: 'daily', text: 'Haz un depósito en la cuenta emocional de alguien.' },
+        { id: 'h4b', type: 'once', text: 'En un desacuerdo, busca una solución buena para las dos partes.' }] },
+    { id: 'h5', title: 'Hábito 5 · Busca primero entender', idea: 'Casi todos escuchamos para responder. La escucha empática busca entender desde el marco de la otra persona.',
+      challenges: [{ id: 'h5a', type: 'daily', text: 'En una conversación, escucha sin preparar respuesta y resume lo que la otra persona siente.' }] },
+    { id: 'h6', title: 'Hábito 6 · Sinergiza', idea: 'Valorar las diferencias abre una tercera alternativa mejor que la tuya y la mía.',
+      challenges: [{ id: 'h6a', type: 'once', text: 'Pide opinión a alguien que piense distinto y buscad juntos una tercera opción.' }] },
+    { id: 'h7', title: 'Hábito 7 · Afila la sierra', idea: 'Renuévate en cuatro dimensiones: física, mental, social/emocional y espiritual.',
+      challenges: [
+        { id: 'h7a', type: 'daily', text: 'Renovación física: entreno o 8.000 pasos.' },
+        { id: 'h7b', type: 'daily', text: 'Renovación mental: 20 min de lectura.' }] },
+  ]
+};
+
+const EX = {
+  hipthrust: { n: 'Hip thrust (máquina o barra)', m: { gluteos: 1, isquios: .4 } },
+  rdl: { n: 'Peso muerto rumano', m: { isquios: 1, gluteos: .7, lumbar: .3 } },
+  bulgara: { n: 'Sentadilla búlgara', m: { gluteos: 1, cuadriceps: .7 } },
+  abduccion: { n: 'Abducción en máquina', m: { gluteos: 1 } },
+  patada: { n: 'Patada de glúteo en polea', m: { gluteos: 1, isquios: .3 } },
+  prensa: { n: 'Prensa con pies altos', m: { gluteos: .7, cuadriceps: 1, aductores: .3 } },
+  hiper: { n: 'Hiperextensión 45° (enfoque glúteo)', m: { gluteos: .8, lumbar: .5, isquios: .5 } },
+  femoral: { n: 'Curl femoral', m: { isquios: 1 } },
+  goblet: { n: 'Sentadilla goblet / sumo', m: { cuadriceps: 1, gluteos: .6, aductores: .5 } },
+  stepup: { n: 'Step-up al cajón', m: { gluteos: .9, cuadriceps: .7 } },
+  extcuad: { n: 'Extensión de cuádriceps', m: { cuadriceps: 1 } },
+  jalon: { n: 'Jalón al pecho', m: { espalda: 1, biceps: .5 } },
+  remo: { n: 'Remo sentado en polea', m: { espalda: 1, trapecio: .3, biceps: .3 } },
+  presspecho: { n: 'Press de pecho en máquina', m: { pecho: 1, triceps: .5, hombros: .3 } },
+  presshombro: { n: 'Press de hombro en máquina', m: { hombros: 1, triceps: .4 } },
+  laterales: { n: 'Elevaciones laterales', m: { hombros: 1 } },
+  facepull: { n: 'Face pull', m: { hombros: .5, trapecio: .6 } },
+  curl: { n: 'Curl de bíceps', m: { biceps: 1 } },
+  triceps: { n: 'Extensión de tríceps en polea', m: { triceps: 1 } },
+  pallof: { n: 'Pallof press', m: { oblicuos: 1, abdomen: .6 } },
+  plancha: { n: 'Plancha', m: { abdomen: 1, oblicuos: .3 } },
+  deadbug: { n: 'Dead bug', m: { abdomen: 1 } },
+  gemelo: { n: 'Gemelo en máquina', m: { gemelos: 1 } },
+  cinta: { n: 'Cinta inclinada caminando (20-30 min)', m: {} },
+};
+
+const MUSCLES = {
+  gluteos: ['Glúteos', 18], isquios: ['Isquios', 10], cuadriceps: ['Cuádriceps', 10], aductores: ['Aductores', 6],
+  gemelos: ['Gemelos', 6], espalda: ['Espalda', 10], trapecio: ['Trapecio', 6], hombros: ['Hombros', 10],
+  pecho: ['Pecho', 8], biceps: ['Bíceps', 6], triceps: ['Tríceps', 6], abdomen: ['Abdomen', 8], oblicuos: ['Oblicuos', 6], lumbar: ['Lumbar', 4],
+};
+
+const PLAN = [
+  { id: 'p1', name: 'Glúteo · fuerza', focus: 'Cargas altas, 6-10 reps', ex: [['hipthrust', '4×6-8'], ['bulgara', '3×8-10'], ['rdl', '3×8-10'], ['abduccion', '3×15'], ['plancha', '3×40 s']] },
+  { id: 'p2', name: 'Torso', focus: 'Postura y cintura visualmente más estrecha', ex: [['jalon', '3×10'], ['presspecho', '3×10'], ['remo', '3×10'], ['presshombro', '3×10'], ['laterales', '3×15'], ['facepull', '2×15']] },
+  { id: 'p3', name: 'Glúteo · volumen + core', focus: 'Más repeticiones, conexión mente-músculo', ex: [['prensa', '3×12'], ['hiper', '3×12'], ['patada', '3×15'], ['femoral', '3×12'], ['abduccion', '2×20'], ['pallof', '3×12'], ['deadbug', '3×10']] },
+  { id: 'p4', name: 'Full body + cardio', focus: 'Gasto calórico y técnica', ex: [['goblet', '3×12'], ['stepup', '3×10'], ['jalon', '3×12'], ['presshombro', '3×12'], ['hipthrust', '3×15'], ['cinta', '20-30 min']] },
+];
+
+const RECS = [
+  { t: 'Hábitos atómicos', a: 'James Clear', cat: 'Autoayuda', why: 'El "cómo" que complementa a Covey: cambios pequeños, diarios y medibles. Encaja con tus retos.' },
+  { t: 'El hombre en busca de sentido', a: 'Viktor Frankl', cat: 'Psicología', why: 'La idea del espacio entre estímulo y respuesta del Hábito 1 viene de aquí.' },
+  { t: 'Mindset', a: 'Carol Dweck', cat: 'Psicología', why: 'Mentalidad de crecimiento: por qué unas personas mejoran y otras se estancan.' },
+  { t: 'Inteligencia emocional', a: 'Daniel Goleman', cat: 'Psicología', why: 'Base para tu panel de salud emocional y para el Hábito 5.' },
+  { t: 'Pensar rápido, pensar despacio', a: 'Daniel Kahneman', cat: 'Psicología', why: 'Cómo decide de verdad el cerebro. Muy útil también para marketing.' },
+  { t: 'Influencia', a: 'Robert Cialdini', cat: 'Marketing', why: 'Los 6 principios de persuasión. Un clásico de psicología aplicada al marketing.' },
+  { t: 'Esto es marketing', a: 'Seth Godin', cat: 'Marketing', why: 'Marketing desde la empatía y el servicio, muy en línea con ganar/ganar.' },
+  { t: 'Enganchados (Hooked)', a: 'Nir Eyal', cat: 'Marketing', why: 'Cómo se crean productos que generan hábito. Te servirá para tus proyectos.' },
+  { t: 'Contagioso', a: 'Jonah Berger', cat: 'Marketing', why: 'Por qué unas ideas se comparten y otras no.' },
+  { t: 'Enfócate (Deep Work)', a: 'Cal Newport', cat: 'Productividad', why: 'Primero lo primero llevado al trabajo concentrado.' },
+];
+
+/* ============ Utilidades ============ */
+const pad = n => String(n).padStart(2, '0');
+const dkey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const today = () => dkey(new Date());
+const daysAgo = n => { const d = new Date(); d.setDate(d.getDate() - n); return dkey(d); };
+const fromKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+const fmtDay = k => fromKey(k).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+const uid = () => Math.random().toString(36).slice(2, 9);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = (n, d = 0) => Number(n).toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d });
+const ICON_CHECK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
+
+/* ============ Estado (localStorage hasta que exista el servidor) ============ */
+const KEY = 'valmon.v1';
+function seed() {
+  const weights = [64.9, 64.7, 64.8, 64.4, 64.3, 64.1, 63.9, 63.8, 63.6].map((kg, i, a) => ({ date: daysAgo((a.length - 1 - i) * 7), kg }));
+  const checks = {};
+  const mark = (id, list) => { checks[id] = list.map(daysAgo); };
+  mark('h1a', [0, 1, 2, 3, 4, 6, 7, 8, 9]);
+  mark('h1b', [1, 2, 3, 5, 6]);
+  mark('h2b', [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  mark('h7b', [0, 1, 2, 4, 5, 6, 7]);
+  const w = (n, plan, extra) => ({ id: uid(), date: daysAgo(n), name: PLAN.find(p => p.id === plan).name, ex: PLAN.find(p => p.id === plan).ex.map(([id, s]) => ({ id, sets: parseInt(s) || 1 })), ...extra });
+  const days = {};
+  [9800, 7200, 11050, 6400, 8900, 10300, 5600].forEach((s, i) => days[daysAgo(i)] = { steps: s, intake: i === 0 ? 1150 : 1600 + (i % 3) * 120 });
+  const moods = {};
+  [4, 3, 4, 5, 3, 2, 4, 4, 3, 4, 5, 4].forEach((m, i) => moods[daysAgo(i + 1)] = { m, energy: 3, note: '' });
+  return {
+    v: 1, example: true,
+    profile: { name: 'María', age: 28, height: 165, goalWeight: 60, stepGoal: 9000, deficit: 400 },
+    books: [
+      { ...SEVEN, status: 'leyendo', page: 148 },
+      { id: uid(), title: 'Hábitos atómicos', author: 'James Clear', cat: 'Autoayuda', pages: 328, page: 0, status: 'pendiente', chapters: [] },
+      { id: uid(), title: 'Influencia', author: 'Robert Cialdini', cat: 'Marketing', pages: 336, page: 336, status: 'leído', chapters: [] },
+    ],
+    active: ['h1a', 'h1b', 'h2b', 'h3a', 'h7b'],
+    checks,
+    learnings: [
+      { id: uid(), bookId: 'b7h', chapter: 'h1', text: 'No controlo lo que me pasa, pero sí cómo respondo. Si me quejo de algo, pregúntame qué parte está en mi círculo de influencia.', date: daysAgo(6) },
+      { id: uid(), bookId: 'b7h', chapter: 'h2', text: 'Imaginar mi 80 cumpleaños: qué me gustaría que dijeran de mí. Eso es lo que de verdad importa.', date: daysAgo(2) },
+    ],
+    weights,
+    measures: [
+      { date: daysAgo(28), cintura: 74, cadera: 98, gluteo: 99, muslo: 57, brazo: 28 },
+      { date: daysAgo(0), cintura: 72, cadera: 98, gluteo: 100, muslo: 56.5, brazo: 28 },
+    ],
+    workouts: [w(0, 'p1'), w(2, 'p2'), w(3, 'p3'), w(5, 'p4'), w(7, 'p1'), w(9, 'p2')],
+    days, moods,
+    projects: [
+      { id: uid(), name: 'Valmon · mi app', area: 'Personal', status: 'en marcha', next: 'Elegir servidor', tasks: [
+        { id: uid(), text: 'Diseñar las pantallas', done: true }, { id: uid(), text: 'Primera versión en el móvil', done: true },
+        { id: uid(), text: 'Comprar servidor', done: false }, { id: uid(), text: 'Sincronizar con Hevy', done: false }, { id: uid(), text: 'Conectar con Apple Salud', done: false }] },
+      { id: uid(), name: 'Plan de contenidos', area: 'Marketing', status: 'idea', next: '', tasks: [
+        { id: uid(), text: 'Definir público', done: false }, { id: uid(), text: 'Calendario de 4 semanas', done: false }] },
+    ],
+  };
+}
+function blank() {
+  const s = seed();
+  return { ...s, example: false, books: [{ ...SEVEN, status: 'leyendo', page: 0 }], active: [], checks: {}, learnings: [], weights: [], measures: [], workouts: [], days: {}, moods: {}, projects: [] };
+}
+let S;
+try { S = JSON.parse(localStorage.getItem(KEY)) || seed(); } catch (e) { S = seed(); }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+let UI = { tab: 'home', mind: 'books', bookId: null, body: 'resumen', sheet: null, confirmReset: false };
+try { const t = localStorage.getItem(KEY + '.tab'); if (t) UI.tab = t; } catch (e) {}
+
+/* ============ Cálculos ============ */
+const allChallenges = () => S.books.flatMap(b => (b.chapters || []).flatMap(c => c.challenges.map(ch => ({ ...ch, book: b, chapter: c }))));
+const isDone = (cid, day = today()) => (S.checks[cid] || []).includes(day);
+function streak(cid) {
+  const set = new Set(S.checks[cid] || []);
+  let n = 0, i = set.has(today()) ? 0 : 1;
+  while (set.has(daysAgo(i))) { n++; i++; }
+  return n;
+}
+function bestStreak(cid) {
+  const ds = [...(S.checks[cid] || [])].sort();
+  let best = 0, cur = 0, prev = null;
+  ds.forEach(k => { const d = fromKey(k); cur = prev && (d - prev) / 864e5 === 1 ? cur + 1 : 1; best = Math.max(best, cur); prev = d; });
+  return best;
+}
+const lastWeight = () => S.weights.length ? S.weights[S.weights.length - 1].kg : 63;
+function weeklySets() {
+  const from = daysAgo(6), out = {};
+  Object.keys(MUSCLES).forEach(k => out[k] = 0);
+  S.workouts.filter(w => w.date >= from).forEach(w => w.ex.forEach(e => {
+    const m = (EX[e.id] || {}).m || {};
+    Object.entries(m).forEach(([k, f]) => out[k] += f * (e.sets || 0));
+  }));
+  return out;
+}
+function energy(day = today()) {
+  const p = S.profile, kg = lastWeight();
+  const bmr = 10 * kg + 6.25 * p.height - 5 * p.age - 161; // Mifflin-St Jeor, mujer
+  const steps = (S.days[day] || {}).steps || 0;
+  const stepK = steps * kg * 0.0005;               // ~0,03 kcal por paso a 63 kg
+  const trained = S.workouts.some(w => w.date === day);
+  const workK = trained ? 220 : 0;
+  const tdee = Math.round(bmr * 1.15 + stepK + workK);
+  return { bmr: Math.round(bmr), steps, stepK: Math.round(stepK), workK, tdee, target: tdee - p.deficit, intake: (S.days[day] || {}).intake || 0 };
+}
+
+/* ============ Componentes ============ */
+function weightChart() {
+  const pts = S.weights.slice(-12);
+  if (pts.length < 2) return `<p class="muted small">Apunta al menos dos pesajes para ver la línea.</p>`;
+  const W = 320, H = 150, L = 34, R = 10, T = 12, B = 24;
+  const vals = pts.map(p => p.kg);
+  let lo = Math.floor(Math.min(...vals, S.profile.goalWeight) - .5), hi = Math.ceil(Math.max(...vals) + .5);
+  const x = i => L + i * (W - L - R) / (pts.length - 1);
+  const y = v => T + (hi - v) * (H - T - B) / (hi - lo);
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.kg).toFixed(1)}`).join('');
+  const area = `${line}L${x(pts.length - 1)},${H - B}L${x(0)},${H - B}Z`;
+  const ticks = [lo, (lo + hi) / 2, hi];
+  const gy = y(S.profile.goalWeight);
+  const last = pts[pts.length - 1];
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Evolución del peso">
+    <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--pink)" stop-opacity=".35"/><stop offset="1" stop-color="var(--pink)" stop-opacity="0"/></linearGradient></defs>
+    ${ticks.map(t => `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${y(t) + 4}" text-anchor="end" font-size="10" fill="var(--muted)">${fmt(t, t % 1 ? 1 : 0)}</text>`).join('')}
+    <line x1="${L}" x2="${W - R}" y1="${gy}" y2="${gy}" stroke="var(--pink-soft)" stroke-dasharray="4 4" stroke-width="1"/>
+    <text x="${W - R}" y="${gy - 5}" text-anchor="end" font-size="10" fill="var(--pink-soft)">objetivo ${fmt(S.profile.goalWeight)} kg</text>
+    <path d="${area}" fill="url(#wg)"/>
+    <path d="${line}" fill="none" stroke="var(--pink)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${x(pts.length - 1)}" cy="${y(last.kg)}" r="5" fill="var(--pink)" stroke="var(--bg)" stroke-width="2"/>
+    <text x="${x(0)}" y="${H - 6}" font-size="10" fill="var(--muted)">${fmtDay(pts[0].date)}</text>
+    <text x="${x(pts.length - 1)}" y="${H - 6}" text-anchor="end" font-size="10" fill="var(--muted)">${fmtDay(last.date)}</text>
+  </svg>`;
+}
+
+function muscleMap(sets) {
+  const f = k => { const t = Math.min(1, sets[k] / MUSCLES[k][1]); return t <= 0 ? 'var(--muscle-off)' : `color-mix(in srgb, var(--pink) ${Math.round(25 + t * 75)}%, var(--muscle-off))`; };
+  const e = (k, cx, cy, rx, ry) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${f(k)}"><title>${MUSCLES[k][0]}: ${fmt(sets[k], 1)} series</title></ellipse>`;
+  const r = (k, x, y, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="${f(k)}"><title>${MUSCLES[k][0]}: ${fmt(sets[k], 1)} series</title></rect>`;
+  const sil = cx => `<g fill="var(--surface-2)">
+      <circle cx="${cx}" cy="20" r="13"/><rect x="${cx - 5}" y="31" width="10" height="10"/>
+      <path d="M${cx - 30},44 Q${cx},38 ${cx + 30},44 L${cx + 26},125 Q${cx},132 ${cx - 26},125Z"/>
+      <rect x="${cx - 44}" y="48" width="13" height="78" rx="6"/><rect x="${cx + 31}" y="48" width="13" height="78" rx="6"/>
+      <rect x="${cx - 26}" y="120" width="24" height="120" rx="10"/><rect x="${cx + 2}" y="120" width="24" height="120" rx="10"/></g>`;
+  const a = 70, b = 210;
+  return `<svg viewBox="0 0 280 250" width="100%" role="img" aria-label="Mapa de músculos trabajados esta semana">
+    ${sil(a)}${sil(b)}
+    ${e('hombros', a - 28, 54, 11, 9)}${e('hombros', a + 28, 54, 11, 9)}
+    ${e('pecho', a - 11, 64, 12, 9)}${e('pecho', a + 11, 64, 12, 9)}
+    ${e('biceps', a - 37, 80, 6, 13)}${e('biceps', a + 37, 80, 6, 13)}
+    ${r('abdomen', a - 9, 77, 18, 42)}
+    ${e('oblicuos', a - 18, 98, 5, 16)}${e('oblicuos', a + 18, 98, 5, 16)}
+    ${e('cuadriceps', a - 14, 160, 10, 30)}${e('cuadriceps', a + 14, 160, 10, 30)}
+    ${e('aductores', a - 4, 145, 3, 16)}${e('aductores', a + 4, 145, 3, 16)}
+    ${e('trapecio', b, 48, 17, 9)}
+    ${e('hombros', b - 28, 54, 11, 9)}${e('hombros', b + 28, 54, 11, 9)}
+    ${e('espalda', b - 12, 80, 12, 19)}${e('espalda', b + 12, 80, 12, 19)}
+    ${e('triceps', b - 37, 80, 6, 13)}${e('triceps', b + 37, 80, 6, 13)}
+    ${r('lumbar', b - 10, 101, 20, 17)}
+    ${e('gluteos', b - 12, 136, 13, 14)}${e('gluteos', b + 12, 136, 13, 14)}
+    ${e('isquios', b - 14, 175, 10, 24)}${e('isquios', b + 14, 175, 10, 24)}
+    ${e('gemelos', b - 14, 218, 8, 17)}${e('gemelos', b + 14, 218, 8, 17)}
+    <text x="${a}" y="248" text-anchor="middle" font-size="10" fill="var(--muted)">DELANTE</text>
+    <text x="${b}" y="248" text-anchor="middle" font-size="10" fill="var(--muted)">DETRÁS</text>
+  </svg>`;
+}
+
+function challengeRow(ch) {
+  const done = ch.type === 'once' ? (S.checks[ch.id] || []).length > 0 : isDone(ch.id);
+  const st = streak(ch.id);
+  const dots = ch.type === 'daily' ? `<div class="dots" aria-label="Últimos 14 días">${Array.from({ length: 14 }, (_, i) => `<i class="${isDone(ch.id, daysAgo(13 - i)) ? 'on' : ''}"></i>`).join('')}</div>` : '';
+  const meta = ch.type === 'daily' ? `<span class="streak">${st} ${st === 1 ? 'día' : 'días'} seguidos · récord ${bestStreak(ch.id)}</span>`
+    : ch.type === 'weekly' ? `<span class="streak">Semanal · ${(S.checks[ch.id] || []).length} veces</span>` : `<span class="streak">${done ? 'Hecho' : 'Una vez'}</span>`;
+  return `<div class="check">
+    <button class="box" role="checkbox" aria-checked="${done}" aria-label="Marcar: ${esc(ch.text)}" data-a="toggle" data-id="${ch.id}" data-type="${ch.type}">${ICON_CHECK}</button>
+    <div class="grow"><p>${esc(ch.text)}</p>${meta}${dots}</div></div>`;
+}
+
+/* ============ Pantallas ============ */
+function viewHome() {
+  const h = new Date().getHours();
+  const hi = h < 13 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches';
+  const act = allChallenges().filter(c => S.active.includes(c.id));
+  const doneN = act.filter(c => c.type === 'once' ? (S.checks[c.id] || []).length : isDone(c.id)).length;
+  const reading = S.books.find(b => b.status === 'leyendo');
+  const en = energy();
+  const pool = [...S.learnings.map(l => ({ text: l.text, src: (S.books.find(b => b.id === l.bookId) || {}).title || '' })),
+    ...SEVEN.chapters.map(c => ({ text: c.idea, src: `${SEVEN.title} · ${c.title}` }))];
+  const rem = pool[(new Date().getDate()) % pool.length];
+  const next = PLAN[S.workouts.length % PLAN.length];
+  const trainedToday = S.workouts.some(w => w.date === today());
+  const mood = S.moods[today()];
+  return `
+  <header class="top"><div><p class="eyebrow">${new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+    <h1>${hi},<br><em>${esc(S.profile.name)}</em></h1></div>
+    <div class="stack" style="gap:6px;align-items:flex-end"><span class="pill pink num">${doneN}/${act.length} retos</span><button class="link" data-a="go" data-tab="perfil">Ajustes</button></div></header>
+  ${S.example ? `<div class="banner"><span>Estás viendo datos de ejemplo.</span><button class="link" data-a="go" data-tab="perfil">Empezar con los míos</button></div>` : ''}
+  <section class="card hot">
+    <p class="eyebrow" style="color:inherit">Recuerda</p>
+    <p class="quote">${esc(rem.text)}</p>
+    <p class="small muted">${esc(rem.src)}</p>
+  </section>
+  <section class="card">
+    <div class="row between"><h2>Retos de hoy</h2><button class="link" data-a="go" data-tab="mente">Ver libros</button></div>
+    ${act.length ? `<div>${act.map(challengeRow).join('')}</div>` : `<p class="muted">Activa retos desde los capítulos de tu libro y aparecerán aquí cada día.</p>`}
+  </section>
+  <div class="grid2">
+    <section class="card"><p class="eyebrow">Pasos</p><p class="stat">${fmt(en.steps)}</p>
+      <div class="bar"><i style="width:${Math.min(100, en.steps / S.profile.stepGoal * 100)}%"></i></div><p class="small muted num">meta ${fmt(S.profile.stepGoal)}</p></section>
+    <section class="card"><p class="eyebrow">Calorías</p><p class="stat">${fmt(Math.max(0, en.target - en.intake))}<small>kcal</small></p>
+      <div class="bar"><i style="width:${Math.min(100, en.intake / en.target * 100)}%"></i></div><p class="small muted num">te quedan de ${fmt(en.target)}</p></section>
+  </div>
+  <section class="card">
+    <div class="row between"><h2>Entreno</h2>${trainedToday ? '<span class="pill ok">Hecho hoy</span>' : '<span class="pill">Toca</span>'}</div>
+    <div class="row between"><div class="grow"><h3>${esc(next.name)}</h3><p class="small muted">${next.ex.length} ejercicios · ${esc(next.focus)}</p></div>
+      <button class="btn sm" data-a="sheet" data-s="log" data-plan="${next.id}">Apuntar</button></div>
+  </section>
+  ${reading ? `<section class="card"><p class="eyebrow">Leyendo</p>
+    <button class="tap row" data-a="book" data-id="${reading.id}"><div class="cover pink">${esc(reading.title[0])}</div>
+    <div class="grow stack" style="gap:6px"><h3>${esc(reading.title)}</h3><div class="bar"><i style="width:${reading.page / reading.pages * 100}%"></i></div>
+    <p class="small muted num">pág. ${reading.page} de ${reading.pages}</p></div></button></section>` : ''}
+  <section class="card"><div class="row between"><h2>¿Cómo estás hoy?</h2><button class="link" data-a="go" data-tab="emocion">${mood ? 'Ver' : 'Registrar'}</button></div>
+    ${moodPicker()}</section>`;
+}
+
+function viewMind() {
+  const seg = `<div class="seg" role="group" aria-label="Salud mental">
+    ${[['books', 'Mis libros'], ['learn', 'Aprendizajes'], ['recs', 'Recomendados']].map(([k, l]) => `<button aria-pressed="${UI.mind === k && !UI.bookId}" data-a="mind" data-k="${k}">${l}</button>`).join('')}</div>`;
+  const head = `<header class="top"><div><p class="eyebrow">Salud mental · Lectura</p><h1>Lo que<br><em>estoy leyendo</em></h1></div></header>`;
+  if (UI.bookId) return head + viewBook(S.books.find(b => b.id === UI.bookId));
+  if (UI.mind === 'learn') {
+    return head + seg + `<section class="card"><div class="row between"><h2>Aprendizajes</h2><button class="btn sm" data-a="sheet" data-s="learning">Añadir</button></div>
+      ${S.learnings.length ? [...S.learnings].reverse().map(l => { const b = S.books.find(x => x.id === l.bookId) || {}; const c = (b.chapters || []).find(c => c.id === l.chapter);
+        return `<div class="check"><div class="grow stack" style="gap:4px"><p>${esc(l.text)}</p><p class="small muted">${esc(b.title || '')}${c ? ' · ' + esc(c.title) : ''} · ${fmtDay(l.date)}</p></div></div>`; }).join('')
+      : '<p class="muted">Apunta aquí lo que te llevas de cada capítulo. La portada te los irá recordando.</p>'}</section>`;
+  }
+  if (UI.mind === 'recs') {
+    const mine = new Set(S.books.map(b => b.title.toLowerCase()));
+    const cats = S.books.reduce((a, b) => (a[b.cat] = (a[b.cat] || 0) + 1, a), {});
+    const list = RECS.filter(r => !mine.has(r.t.toLowerCase())).sort((x, y) => (cats[y.cat] || 0) - (cats[x.cat] || 0));
+    return head + seg + `<section class="card"><h2>Para ti</h2><p class="small muted">Según lo que lees: ${Object.keys(cats).map(esc).join(', ')}.</p>
+      ${list.map((r, i) => `<div class="list-item"><div class="cover">${esc(r.t[0])}</div><div class="grow stack" style="gap:4px">
+        <div class="row between wrap"><h3>${esc(r.t)}</h3><span class="pill">${esc(r.cat)}</span></div>
+        <p class="small muted">${esc(r.a)}</p><p class="small">${esc(r.why)}</p>
+        <div><button class="btn ghost sm" data-a="addrec" data-i="${RECS.indexOf(r)}">Añadir a pendientes</button></div></div></div>`).join('')}</section>`;
+  }
+  const groups = [['leyendo', 'Leyendo'], ['pendiente', 'Pendientes'], ['leído', 'Leídos']];
+  return head + seg + groups.map(([st, label]) => {
+    const bs = S.books.filter(b => b.status === st);
+    if (!bs.length && st !== 'leyendo') return '';
+    return `<section class="card"><div class="row between"><h2>${label}</h2>${st === 'leyendo' ? '<button class="btn sm" data-a="sheet" data-s="book">Añadir libro</button>' : `<span class="pill num">${bs.length}</span>`}</div>
+      ${bs.map(b => `<button class="tap list-item" data-a="book" data-id="${b.id}"><div class="cover ${st === 'leyendo' ? 'pink' : ''}">${esc(b.title[0])}</div>
+        <div class="grow stack" style="gap:5px"><h3>${esc(b.title)}</h3><p class="small muted">${esc(b.author)} · ${esc(b.cat)}</p>
+        ${st === 'leyendo' ? `<div class="bar"><i style="width:${b.page / b.pages * 100}%"></i></div><p class="small muted num">pág. ${b.page} de ${b.pages} · ${Math.round(b.page / b.pages * 100)} %</p>` : ''}</div></button>`).join('') || '<p class="muted">Ningún libro aquí todavía.</p>'}
+    </section>`;
+  }).join('');
+}
+
+function viewBook(b) {
+  if (!b) { UI.bookId = null; return ''; }
+  const ls = S.learnings.filter(l => l.bookId === b.id);
+  return `<button class="link" data-a="back">← Mis libros</button>
+  <section class="card"><div class="row" style="align-items:flex-start"><div class="cover pink">${esc(b.title[0])}</div>
+    <div class="grow stack" style="gap:6px"><h2>${esc(b.title)}</h2><p class="small muted">${esc(b.author)} · ${esc(b.cat)}</p></div></div>
+    <form class="row" data-form="page"><label class="f grow">Página actual<input id="f-page" name="page" type="number" inputmode="numeric" min="0" max="${b.pages}" value="${b.page}"></label>
+      <label class="f" style="width:130px">Estado<select id="f-status" name="status">${['leyendo', 'pendiente', 'leído'].map(s => `<option ${s === b.status ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
+      <button class="btn sm" style="align-self:flex-end">Guardar</button></form>
+    <div class="bar"><i style="width:${b.page / b.pages * 100}%"></i></div>
+  </section>
+  ${b.chapters && b.chapters.length ? `<section class="card"><div class="row between"><h2>Capítulos y retos</h2><span class="pill pink">${b.chapters.length}</span></div>
+    <p class="small muted">Activa un reto para que aparezca cada día en tu portada y medir cuánto tiempo lo mantienes.</p>
+    ${b.chapters.map(c => `<div class="chapter"><p class="kicker">${esc(c.title)}</p><p>${esc(c.idea)}</p>
+      ${c.challenges.map(ch => { const on = S.active.includes(ch.id); return `<div class="row between" style="align-items:flex-start">
+        <p class="small grow">${esc(ch.text)} <span class="muted">· ${ch.type === 'daily' ? 'diario' : ch.type === 'weekly' ? 'semanal' : 'una vez'}</span></p>
+        <button class="btn sm ${on ? 'quiet' : 'ghost'}" data-a="activate" data-id="${ch.id}" aria-pressed="${on}">${on ? 'Activo' : 'Activar'}</button></div>
+        ${on ? challengeRow({ ...ch }) : ''}`; }).join('')}</div>`).join('')}</section>`
+    : `<section class="card"><h2>Capítulos y retos</h2><p class="muted small">Este libro aún no tiene retos. Añade aprendizajes mientras lo lees.</p></section>`}
+  <section class="card"><div class="row between"><h2>Mis aprendizajes</h2><button class="btn sm" data-a="sheet" data-s="learning" data-book="${b.id}">Añadir</button></div>
+    ${ls.length ? ls.map(l => `<div class="check"><p class="grow">${esc(l.text)}</p></div>`).join('') : '<p class="muted small">Aún no has apuntado nada de este libro.</p>'}</section>`;
+}
+
+function viewBody() {
+  const seg = `<div class="seg" role="group" aria-label="Salud física">${[['resumen', 'Resumen'], ['entrenos', 'Entrenos'], ['medidas', 'Medidas'], ['calorias', 'Calorías']].map(([k, l]) => `<button aria-pressed="${UI.body === k}" data-a="body" data-k="${k}">${l}</button>`).join('')}</div>`;
+  const head = `<header class="top"><div><p class="eyebrow">Salud física</p><h1>Cuerpo<br><em>en progreso</em></h1></div></header>`;
+  return head + seg + ({ resumen: bodySummary, entrenos: bodyWorkouts, medidas: bodyMeasures, calorias: bodyCalories })[UI.body]();
+}
+function bodySummary() {
+  const sets = weeklySets();
+  const ranked = Object.entries(sets).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const first = S.weights[0], last = S.weights[S.weights.length - 1];
+  const delta = first && last ? last.kg - first.kg : 0;
+  const week = S.workouts.filter(w => w.date >= daysAgo(6)).length;
+  const glute = Math.round(sets.gluteos / Object.values(sets).reduce((a, b) => a + b, 0.0001) * 100);
+  return `
+  <section class="card"><div class="row between"><div><p class="eyebrow">Peso</p><p class="stat">${last ? fmt(last.kg, 1) : '—'}<small>kg</small></p></div>
+    <div class="stack" style="gap:6px;align-items:flex-end">${S.weights.length > 1 ? `<span class="pill ${delta <= 0 ? 'ok' : 'warn'} num">${delta > 0 ? '+' : ''}${fmt(delta, 1)} kg</span>` : ''}<button class="link" data-a="sheet" data-s="weight">Apuntar peso</button></div></div>
+    ${weightChart()}</section>
+  <div class="grid2">
+    <section class="card"><p class="eyebrow">Esta semana</p><p class="stat">${week}<small>entrenos</small></p><p class="small muted">objetivo 4</p></section>
+    <section class="card"><p class="eyebrow">Foco glúteo</p><p class="stat">${glute}<small>%</small></p><p class="small muted">del volumen semanal</p></section>
+  </div>
+  <section class="card"><div class="row between"><h2>Músculos · 7 días</h2><span class="pill">series</span></div>
+    ${muscleMap(sets)}
+    <div class="stack" style="gap:8px">${ranked.length ? ranked.map(([k, v]) => `<div class="row"><span class="small" style="width:86px">${MUSCLES[k][0]}</span>
+      <div class="bar grow"><i style="width:${Math.min(100, v / MUSCLES[k][1] * 100)}%"></i></div><span class="small num muted" style="width:62px;text-align:right">${fmt(v, 1)}/${MUSCLES[k][1]}</span></div>`).join('') : '<p class="muted small">Sin entrenos en los últimos 7 días.</p>'}</div>
+    <p class="small muted">Series efectivas: un ejercicio cuenta entero para su músculo principal y a medias para los secundarios. La cifra de la derecha es la meta semanal.</p></section>
+  ${integrations()}`;
+}
+function integrations() {
+  return `<section class="card"><h2>Conexiones</h2>
+    <div class="list-item"><div class="grow"><h3>Apple Salud</h3><p class="small muted">Pasos, entrenos y peso automáticos. Necesita la versión nativa de la app.</p></div><span class="pill warn">Pendiente</span></div>
+    <div class="list-item"><div class="grow"><h3>Hevy</h3><p class="small muted">Importar los entrenos que apuntes en Hevy. Se hará desde tu servidor con la API de Hevy.</p></div><span class="pill warn">Pendiente</span></div>
+    <p class="small muted">Mientras tanto, apunta pasos y entrenos a mano aquí.</p></section>`;
+}
+function bodyWorkouts() {
+  return `
+  <section class="card"><div class="row between"><h2>Tu plan · glúteo</h2><span class="pill pink">4 días</span></div>
+    <p class="small muted">Glúteo dos veces por semana más un día de torso y otro de cuerpo entero. Para reducir abdomen, lo que funciona es el déficit calórico, los pasos diarios y entrenar fuerza. El core está para dar fuerza y postura, no para quemar la grasa de la zona.</p>
+    ${PLAN.map((p, i) => `<details class="chapter" ${i === 0 ? 'open' : ''}><summary class="row between" style="cursor:pointer;list-style:none">
+      <div><p class="kicker">Día ${i + 1}</p><h3>${esc(p.name)}</h3></div><span class="small muted">${p.ex.length} ej.</span></summary>
+      <p class="small muted" style="margin-top:6px">${esc(p.focus)}</p>
+      <table><tbody>${p.ex.map(([id, s]) => `<tr><td style="white-space:normal">${esc(EX[id].n)}</td><td class="muted">${s}</td></tr>`).join('')}</tbody></table>
+      <button class="btn sm" data-a="sheet" data-s="log" data-plan="${p.id}">Apuntar este entreno</button></details>`).join('')}
+    <p class="small muted">Todos los días: 8.000–10.000 pasos. Descanso entre series: 1:30–2 min en básicos, 60 s en aislamiento. Sube peso cuando llegues al tope de repeticiones con buena técnica.</p>
+  </section>
+  <section class="card"><div class="row between"><h2>Historial</h2><button class="btn sm" data-a="sheet" data-s="log">Entreno libre</button></div>
+    ${S.workouts.length ? [...S.workouts].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12).map(w => {
+      const ms = {}; w.ex.forEach(e => Object.entries((EX[e.id] || {}).m || {}).forEach(([k, f]) => { if (f >= .7) ms[k] = 1; }));
+      return `<div class="list-item"><div class="grow stack" style="gap:4px"><div class="row between"><h3>${esc(w.name)}</h3><span class="small muted num">${fmtDay(w.date)}</span></div>
+        <p class="small muted">${w.ex.reduce((a, e) => a + (e.sets || 0), 0)} series · ${Object.keys(ms).map(k => MUSCLES[k][0]).join(', ')}</p></div>
+        <button class="link" data-a="delw" data-id="${w.id}" aria-label="Borrar entreno">Borrar</button></div>`; }).join('') : '<p class="muted small">Aún no hay entrenos.</p>'}
+  </section>
+  <section class="card"><h2>Tu gimnasio</h2><p class="small muted">Los ejercicios del plan usan máquinas habituales: hip thrust, abductora, prensa, polea, curl femoral, jalón y remo. Cuando me digas qué máquinas tiene tu gimnasio, ajusto el plan a ellas.</p></section>`;
+}
+function bodyMeasures() {
+  const cols = [['cintura', 'Cintura'], ['cadera', 'Cadera'], ['gluteo', 'Glúteo'], ['muslo', 'Muslo'], ['brazo', 'Brazo']];
+  const ms = [...S.measures].sort((a, b) => b.date.localeCompare(a.date));
+  const a = ms[ms.length - 1], z = ms[0];
+  return `<section class="card"><div class="row between"><h2>Medidas (cm)</h2><button class="btn sm" data-a="sheet" data-s="measure">Añadir</button></div>
+    ${ms.length ? `<div class="scroll-x"><table><thead><tr><th>Fecha</th>${cols.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead><tbody>
+    ${ms.map(m => `<tr><td>${fmtDay(m.date)}</td>${cols.map(c => `<td>${m[c[0]] != null ? fmt(m[c[0]], 1) : '—'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<p class="muted small">Mide una vez cada 2-4 semanas, en ayunas y en el mismo sitio.</p>'}
+  </section>
+  ${ms.length > 1 ? `<section class="card"><h2>Cambio total</h2><div class="stack" style="gap:8px">${cols.map(([k, l]) => { const d = (z[k] || 0) - (a[k] || 0);
+    const good = k === 'gluteo' ? d >= 0 : d <= 0;
+    return `<div class="row between"><span>${l}</span><span class="pill ${d === 0 ? '' : good ? 'ok' : 'warn'} num">${d > 0 ? '+' : ''}${fmt(d, 1)} cm</span></div>`; }).join('')}</div>
+    <p class="small muted">Lo ideal es que baje la cintura y suba o se mantenga el glúteo, aunque el peso cambie poco.</p></section>` : ''}`;
+}
+function bodyCalories() {
+  const en = energy(), p = S.profile;
+  const left = en.target - en.intake;
+  return `<section class="card"><p class="eyebrow">Hoy</p>
+    <div class="row between"><div><p class="stat">${fmt(en.target)}<small>kcal objetivo</small></p></div><span class="pill pink num">−${p.deficit} déficit</span></div>
+    <div class="bar"><i style="width:${Math.min(100, en.intake / en.target * 100)}%"></i></div>
+    <p class="small num">${fmt(en.intake)} comidas · <b>${left >= 0 ? `te quedan ${fmt(left)}` : `te has pasado ${fmt(-left)}`}</b></p>
+    <form class="grid2" data-form="day">
+      <label class="f">Pasos<input id="f-steps" name="steps" type="number" inputmode="numeric" min="0" value="${en.steps || ''}" placeholder="0"></label>
+      <label class="f">Calorías comidas<input id="f-intake" name="intake" type="number" inputmode="numeric" min="0" value="${en.intake || ''}" placeholder="0"></label>
+      <button class="btn" style="grid-column:1/-1">Guardar el día</button></form></section>
+  <section class="card"><h2>De dónde sale el gasto</h2>
+    <table><tbody>
+      <tr><td>Metabolismo basal</td><td>${fmt(en.bmr)} kcal</td></tr>
+      <tr><td>Vida diaria (×1,15)</td><td>${fmt(Math.round(en.bmr * .15))} kcal</td></tr>
+      <tr><td>Pasos (${fmt(en.steps)})</td><td>${fmt(en.stepK)} kcal</td></tr>
+      <tr><td>Entreno</td><td>${fmt(en.workK)} kcal</td></tr>
+      <tr><td><b>Gasto total</b></td><td><b>${fmt(en.tdee)} kcal</b></td></tr>
+    </tbody></table>
+    <p class="small muted">Estimación con la fórmula Mifflin-St Jeor y tu último peso (${fmt(lastWeight(), 1)} kg). Con Apple Salud conectada usaremos tus calorías activas reales.</p></section>
+  <section class="card"><h2>Mis datos</h2>
+    <form class="grid2" data-form="profile">
+      <label class="f">Edad<input id="f-age" name="age" type="number" value="${p.age}"></label>
+      <label class="f">Altura (cm)<input id="f-height" name="height" type="number" value="${p.height}"></label>
+      <label class="f">Peso objetivo<input id="f-goal" name="goalWeight" type="number" step="0.1" value="${p.goalWeight}"></label>
+      <label class="f">Déficit diario<input id="f-deficit" name="deficit" type="number" step="50" value="${p.deficit}"></label>
+      <label class="f">Meta de pasos<input id="f-stepgoal" name="stepGoal" type="number" step="500" value="${p.stepGoal}"></label>
+      <button class="btn quiet" style="align-self:end">Guardar</button></form></section>`;
+}
+
+const MOODS = [[1, 'Muy mal'], [2, 'Mal'], [3, 'Normal'], [4, 'Bien'], [5, 'Genial']];
+function moodPicker() {
+  const m = (S.moods[today()] || {}).m;
+  return `<div class="mood" role="group" aria-label="Estado de ánimo">${MOODS.map(([v, l]) => `<button aria-pressed="${m === v}" data-a="mood" data-v="${v}"><b>${v}</b>${l}</button>`).join('')}</div>`;
+}
+function viewEmotion() {
+  const td = S.moods[today()] || {};
+  const days = Array.from({ length: 14 }, (_, i) => daysAgo(13 - i));
+  const vals = days.map(d => (S.moods[d] || {}).m).filter(Boolean);
+  const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+  return `<header class="top"><div><p class="eyebrow">Salud emocional</p><h1>Cómo me<br><em>siento</em></h1></div></header>
+  <section class="card"><h2>Hoy</h2>${moodPicker()}
+    <form class="stack" data-form="moodnote"><label class="f">Una cosa por la que doy las gracias<textarea id="f-note" name="note" placeholder="Hoy agradezco…">${esc(td.note || '')}</textarea></label>
+    <button class="btn quiet">Guardar nota</button></form></section>
+  <section class="card"><div class="row between"><h2>Últimos 14 días</h2><span class="pill num">media ${avg ? fmt(avg, 1) : '—'}</span></div>
+    <div class="strip">${days.map(d => { const v = (S.moods[d] || {}).m; return `<i title="${fmtDay(d)}: ${v ? MOODS[v - 1][1] : 'sin registro'}" style="background:${v ? `color-mix(in srgb, var(--pink) ${v * 20}%, var(--surface-2))` : ''}"></i>`; }).join('')}</div>
+    <div class="row between small muted"><span>${fmtDay(days[0])}</span><span>hoy</span></div></section>
+  <section class="card"><h2>Próximamente</h2><p class="small muted">Diario guiado, emociones con nombre y relación entre ánimo, sueño y entreno.</p></section>`;
+}
+
+function viewProjects() {
+  const st = { idea: '', 'en marcha': 'pink', pausado: 'warn', hecho: 'ok' };
+  return `<header class="top"><div><p class="eyebrow">Proyectos</p><h1>Lo que<br><em>estoy creando</em></h1></div>
+    <button class="btn sm" data-a="sheet" data-s="project">Nuevo</button></header>
+  ${S.projects.length ? S.projects.map(p => { const done = p.tasks.filter(t => t.done).length, pct = p.tasks.length ? Math.round(done / p.tasks.length * 100) : 0;
+    return `<section class="card"><div class="row between" style="align-items:flex-start"><div class="grow"><h2>${esc(p.name)}</h2><p class="small muted">${esc(p.area)}</p></div>
+      <select aria-label="Estado de ${esc(p.name)}" id="st-${p.id}" data-a="pstatus" data-id="${p.id}" style="width:auto;padding:6px 10px;font-size:13px">${Object.keys(st).map(s => `<option ${s === p.status ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+      <div class="row"><div class="bar grow"><i style="width:${pct}%"></i></div><span class="small num muted">${pct} %</span></div>
+      <div>${p.tasks.map(t => `<div class="check"><button class="box" role="checkbox" aria-checked="${t.done}" aria-label="${esc(t.text)}" data-a="task" data-p="${p.id}" data-id="${t.id}">${ICON_CHECK}</button><p class="grow" style="${t.done ? 'color:var(--muted);text-decoration:line-through' : ''}">${esc(t.text)}</p></div>`).join('')}</div>
+      <form class="row" data-form="task" data-p="${p.id}"><input id="nt-${p.id}" name="text" placeholder="Nuevo paso…" aria-label="Nuevo paso"><button class="btn sm quiet">Añadir</button></form>
+    </section>`; }).join('') : '<section class="card"><p class="muted">Crea tu primer proyecto y divídelo en pasos.</p></section>'}`;
+}
+
+function viewProfile() {
+  return `<button class="link" data-a="go" data-tab="home">← Inicio</button>
+  <header class="top"><div><p class="eyebrow">Ajustes</p><h1>Tus <em>datos</em></h1></div></header>
+  <section class="card"><h2>Empezar de cero</h2>
+    <p class="small muted">Borra los datos de ejemplo y deja la app vacía, con el libro de Covey ya cargado. Esto no se puede deshacer.</p>
+    ${UI.confirmReset ? `<div class="row wrap"><button class="btn" data-a="reset">Sí, borrar todo</button><button class="btn quiet" data-a="noreset">Cancelar</button></div>`
+      : `<div><button class="btn ghost" data-a="askreset">Borrar datos de ejemplo</button></div>`}</section>
+  <section class="card"><h2>Dónde se guarda</h2><p class="small muted">Por ahora todo se guarda en este móvil. Cuando tengas el servidor se sincronizará entre dispositivos.</p></section>`;
+}
+
+/* ============ Hojas (formularios) ============ */
+function sheet() {
+  const s = UI.sheet; if (!s) return '';
+  let body = '';
+  if (s.type === 'book') body = `<h2>Añadir libro</h2><form class="stack" data-form="book">
+    <label class="f">Título<input id="b-title" name="title" required></label><label class="f">Autor/a<input id="b-author" name="author"></label>
+    <div class="grid2"><label class="f">Tema<select id="b-cat" name="cat"><option>Autoayuda</option><option>Psicología</option><option>Marketing</option><option>Productividad</option><option>Otro</option></select></label>
+    <label class="f">Páginas<input id="b-pages" name="pages" type="number" min="1" value="300"></label></div>
+    <label class="f">Estado<select id="b-status" name="status"><option>leyendo</option><option>pendiente</option><option>leído</option></select></label>
+    <button class="btn">Guardar libro</button></form>`;
+  if (s.type === 'learning') { const bid = s.book || (S.books.find(b => b.status === 'leyendo') || S.books[0] || {}).id; const b = S.books.find(x => x.id === bid) || { chapters: [] };
+    body = `<h2>Nuevo aprendizaje</h2><form class="stack" data-form="learning">
+    <label class="f">Libro<select id="l-book" name="bookId">${S.books.map(x => `<option value="${x.id}" ${x.id === bid ? 'selected' : ''}>${esc(x.title)}</option>`).join('')}</select></label>
+    ${b.chapters.length ? `<label class="f">Capítulo<select id="l-ch" name="chapter"><option value="">—</option>${b.chapters.map(c => `<option value="${c.id}">${esc(c.title)}</option>`).join('')}</select></label>` : ''}
+    <label class="f">Qué me llevo<textarea id="l-text" name="text" required placeholder="Con tus palabras, para que te lo recuerde"></textarea></label>
+    <button class="btn">Guardar</button></form>`; }
+  if (s.type === 'weight') body = `<h2>Apuntar peso</h2><form class="stack" data-form="weight">
+    <div class="grid2"><label class="f">Kg<input id="w-kg" name="kg" type="number" step="0.1" inputmode="decimal" required value="${lastWeight()}"></label>
+    <label class="f">Fecha<input id="w-date" name="date" type="date" value="${today()}"></label></div><button class="btn">Guardar</button></form>`;
+  if (s.type === 'measure') body = `<h2>Nuevas medidas (cm)</h2><form class="stack" data-form="measure">
+    <div class="grid2">${[['cintura', 'Cintura'], ['cadera', 'Cadera'], ['gluteo', 'Glúteo'], ['muslo', 'Muslo'], ['brazo', 'Brazo']].map(([k, l]) => `<label class="f">${l}<input id="m-${k}" name="${k}" type="number" step="0.5" inputmode="decimal"></label>`).join('')}
+    <label class="f">Fecha<input id="m-date" name="date" type="date" value="${today()}"></label></div><button class="btn">Guardar</button></form>`;
+  if (s.type === 'project') body = `<h2>Nuevo proyecto</h2><form class="stack" data-form="project">
+    <label class="f">Nombre<input id="p-name" name="name" required></label><label class="f">Área<input id="p-area" name="area" placeholder="Trabajo, personal, estudios…"></label>
+    <label class="f">Primeros pasos (uno por línea)<textarea id="p-tasks" name="tasks"></textarea></label><button class="btn">Crear</button></form>`;
+  if (s.type === 'log') { const p = PLAN.find(x => x.id === s.plan); const pre = p ? Object.fromEntries(p.ex.map(([id, r]) => [id, parseInt(r) || 1])) : {};
+    body = `<h2>Apuntar entreno</h2><form class="stack" data-form="log">
+    <div class="grid2"><label class="f">Nombre<input id="g-name" name="name" value="${esc(p ? p.name : 'Entreno libre')}"></label><label class="f">Fecha<input id="g-date" name="date" type="date" value="${today()}"></label></div>
+    <p class="small muted">Marca los ejercicios que hiciste y cuántas series.</p>
+    <div>${Object.entries(EX).map(([id, e]) => `<label class="ex-pick"><input type="checkbox" id="gx-${id}" name="x-${id}" ${pre[id] ? 'checked' : ''}><span class="grow small">${esc(e.n)}</span>
+      <input type="number" id="gs-${id}" name="s-${id}" min="1" max="10" value="${pre[id] || 3}" aria-label="Series de ${esc(e.n)}"></label>`).join('')}</div>
+    <button class="btn">Guardar entreno</button></form>`; }
+  return `<div class="sheet-bg" data-a="close"><div class="sheet" role="dialog" aria-modal="true">${body}<button class="btn quiet" data-a="close">Cancelar</button></div></div>`;
+}
+
+/* ============ Render y eventos ============ */
+const TABS = [
+  ['home', 'Inicio', '<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>'],
+  ['mente', 'Mente', '<path d="M4 5.5C6.5 4 9.5 4 12 6c2.5-2 5.5-2 8-.5V19c-2.5-1.5-5.5-1.5-8 .5-2.5-2-5.5-2-8-.5z"/><path d="M12 6v13.5"/>'],
+  ['cuerpo', 'Cuerpo', '<path d="M6.5 8v8M17.5 8v8M3.5 10.5v3M20.5 10.5v3M6.5 12h11"/>'],
+  ['emocion', 'Emoción', '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>'],
+  ['proyectos', 'Proyectos', '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>'],
+];
+let toastT;
+function toast(msg) { clearTimeout(toastT); const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.querySelector('.toast')?.remove(); document.body.appendChild(t); toastT = setTimeout(() => t.remove(), 1800); }
+function render() {
+  const v = { home: viewHome, mente: viewMind, cuerpo: viewBody, emocion: viewEmotion, proyectos: viewProjects, perfil: viewProfile }[UI.tab] || viewHome;
+  document.getElementById('root').innerHTML = v();
+  document.getElementById('tabs').innerHTML = TABS.map(([k, l, d]) => `<button data-a="go" data-tab="${k}" ${UI.tab === k ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>${l}</button>`).join('');
+  document.getElementById('layer').innerHTML = sheet();
+}
+function commit(msg) { save(); render(); if (msg) toast(msg); }
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-a]'); if (!el) return;
+  const a = el.dataset.a, d = el.dataset;
+  if (a === 'close') { if (e.target !== el) return; UI.sheet = null; return render(); }
+  if (a === 'pstatus') return;
+  if (a === 'go') { UI.tab = d.tab; UI.bookId = null; UI.confirmReset = false; try { localStorage.setItem(KEY + '.tab', d.tab === 'perfil' ? 'home' : d.tab); } catch (_) {} window.scrollTo(0, 0); return render(); }
+  if (a === 'mind') { UI.mind = d.k; UI.bookId = null; return render(); }
+  if (a === 'body') { UI.body = d.k; return render(); }
+  if (a === 'book') { UI.tab = 'mente'; UI.bookId = d.id; window.scrollTo(0, 0); return render(); }
+  if (a === 'back') { UI.bookId = null; return render(); }
+  if (a === 'sheet') { UI.sheet = { type: d.s, plan: d.plan, book: d.book }; return render(); }
+  if (a === 'toggle') {
+    const list = S.checks[d.id] = S.checks[d.id] || [];
+    if (d.type === 'once') { if (list.length) S.checks[d.id] = []; else list.push(today()); }
+    else { const i = list.indexOf(today()); i >= 0 ? list.splice(i, 1) : list.push(today()); }
+    return commit();
+  }
+  if (a === 'activate') { const i = S.active.indexOf(d.id); i >= 0 ? S.active.splice(i, 1) : S.active.push(d.id); return commit(i >= 0 ? 'Reto desactivado' : 'Reto activado'); }
+  if (a === 'addrec') { const r = RECS[d.i]; S.books.push({ id: uid(), title: r.t, author: r.a, cat: r.cat, pages: 300, page: 0, status: 'pendiente', chapters: [] }); return commit('Añadido a pendientes'); }
+  if (a === 'mood') { S.moods[today()] = { ...(S.moods[today()] || {}), m: +d.v }; return commit('Guardado'); }
+  if (a === 'task') { const p = S.projects.find(x => x.id === d.p); const t = p.tasks.find(x => x.id === d.id); t.done = !t.done; return commit(); }
+  if (a === 'delw') { S.workouts = S.workouts.filter(w => w.id !== d.id); return commit('Entreno borrado'); }
+  if (a === 'askreset') { UI.confirmReset = true; return render(); }
+  if (a === 'noreset') { UI.confirmReset = false; return render(); }
+  if (a === 'reset') { S = blank(); UI = { ...UI, tab: 'home', confirmReset: false }; return commit('Listo, todo a cero'); }
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.dataset.a === 'pstatus') { S.projects.find(p => p.id === el.dataset.id).status = el.value; commit(); }
+  if (el.id === 'l-book') { UI.sheet = { type: 'learning', book: el.value }; render(); }
+});
+document.addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target, fd = Object.fromEntries(new FormData(f)), kind = f.dataset.form;
+  const n = v => v === '' || v == null ? null : Number(v);
+  if (kind === 'book') S.books.push({ id: uid(), title: fd.title.trim(), author: fd.author.trim(), cat: fd.cat, pages: n(fd.pages) || 300, page: 0, status: fd.status, chapters: [] });
+  if (kind === 'learning') S.learnings.push({ id: uid(), bookId: fd.bookId, chapter: fd.chapter || '', text: fd.text.trim(), date: today() });
+  if (kind === 'weight') { S.weights = S.weights.filter(w => w.date !== fd.date); S.weights.push({ date: fd.date, kg: n(fd.kg) }); S.weights.sort((a, b) => a.date.localeCompare(b.date)); }
+  if (kind === 'measure') { const m = { date: fd.date }; ['cintura', 'cadera', 'gluteo', 'muslo', 'brazo'].forEach(k => m[k] = n(fd[k])); S.measures = S.measures.filter(x => x.date !== fd.date); S.measures.push(m); }
+  if (kind === 'project') S.projects.push({ id: uid(), name: fd.name.trim(), area: fd.area.trim(), status: 'idea', tasks: fd.tasks.split('\n').map(t => t.trim()).filter(Boolean).map(text => ({ id: uid(), text, done: false })) });
+  if (kind === 'task') { if (!fd.text.trim()) return; S.projects.find(p => p.id === f.dataset.p).tasks.push({ id: uid(), text: fd.text.trim(), done: false }); return commit(); }
+  if (kind === 'log') { const ex = Object.keys(EX).filter(id => fd['x-' + id]).map(id => ({ id, sets: n(fd['s-' + id]) || 1 }));
+    if (!ex.length) return toast('Marca al menos un ejercicio'); S.workouts.push({ id: uid(), date: fd.date, name: fd.name.trim() || 'Entreno', ex }); }
+  if (kind === 'page') { const b = S.books.find(x => x.id === UI.bookId); b.page = Math.min(b.pages, Math.max(0, n(fd.page) || 0)); b.status = fd.status; }
+  if (kind === 'day') S.days[today()] = { ...(S.days[today()] || {}), steps: n(fd.steps) || 0, intake: n(fd.intake) || 0 };
+  if (kind === 'profile') ['age', 'height', 'goalWeight', 'deficit', 'stepGoal'].forEach(k => { if (n(fd[k]) != null) S.profile[k] = n(fd[k]); });
+  if (kind === 'moodnote') S.moods[today()] = { ...(S.moods[today()] || {}), note: fd.note };
+  UI.sheet = null; commit('Guardado');
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && UI.sheet) { UI.sheet = null; render(); } });
+render();
+</script>
+
+</body>
+</html>
