@@ -303,7 +303,7 @@ const REL_CONTENT = {
 "¿Qué necesitabas de verdad en esa situación (tranquilidad, atención, una explicación) y cómo podrías pedirlo directamente?",
 "¿Qué parte de lo que sentiste se apoyaba en hechos concretos y qué parte en suposiciones o en miedos de experiencias anteriores?"
 ],
-"practice": "Cada vez que sientas celos, anota el hecho, tu suposición y lo que necesitas.",
+"practice": "Cada noche, repasa el día: si hubo celos, apunta hecho, suposición y necesidad; si no, qué te dio seguridad.",
 "covey": 1
 },
 "defensiva": {
@@ -330,7 +330,7 @@ const REL_CONTENT = {
 "En la última discusión, ¿había algo de lo que te decían, aunque fuera pequeño, que fuese cierto?",
 "¿Qué cambiaría si respondieras primero con «¿qué quieres decir exactamente?» en lugar de con una justificación?"
 ],
-"practice": "Ante una queja, reconoce la parte de razón que tenga o pregunta antes de justificarte.",
+"practice": "Pide cada día tu opinión a alguien sobre algo tuyo y responde solo «gracias, lo pienso».",
 "covey": 5
 },
 "escuchar": {
@@ -384,7 +384,7 @@ const REL_CONTENT = {
 "Cuando pones un límite, ¿qué te dices sobre ti misma (egoísta, borde, mala amiga) y hasta qué punto es cierto?",
 "Si una amiga a la que quieres pusiera ese mismo límite, ¿cómo lo verías?"
 ],
-"practice": "Responde «déjame que lo piense» antes de aceptar algo y anota cada «no» que digas.",
+"practice": "Cada día, antes de aceptar algo, di «déjame que lo piense» y decide después con calma.",
 "covey": 3
 },
 "enfado": {
@@ -416,7 +416,7 @@ const REL_CONTENT = {
 "Debajo del enfado de la última vez, ¿había otra emoción, como cansancio, miedo o sentirte ignorada?",
 "¿Qué te gustaría que la otra persona recordara de cómo le hablaste, y qué podrías hacer distinto la próxima vez?"
 ],
-"practice": "Al notar el enfado, haz 10 respiraciones antes de responder y apunta si lo has conseguido.",
+"practice": "Tres veces al día, nombra lo que sientes y su intensidad del 1 al 10.",
 "covey": 1
 },
 "control": {
@@ -588,7 +588,7 @@ const REL_CONTENT = {
 "¿Qué parte de la vida de esa persona (esfuerzos, dudas, renuncias) no estás viendo?",
 "¿En qué has crecido tú respecto a la persona que eras hace un año?"
 ],
-"practice": "Cada vez que te compares, anota qué deseas tú y un paso pequeño hacia ello.",
+"practice": "Cada noche, apunta un avance tuyo de hoy, por pequeño que sea.",
 "covey": 4
 },
 "atencion": {
@@ -610,10 +610,10 @@ const REL_CONTENT = {
 }
 ],
 "text": {
-"title": "10 reglas para conversar mejor (charla TED con subtítulos en español)",
-"source": "TED · Celeste Headlee",
+"title": "10 maneras de tener una mejor conversación (Celeste Headlee)",
+"source": "TED · charla con subtítulos en español",
 "url": "https://www.ted.com/talks/celeste_headlee_10_ways_to_have_a_better_conversation?language=es",
-"lang": "en"
+"lang": "es"
 },
 "questions": [
 "¿Con quién te gustaría pasar más tiempo y qué está ocupando ahora ese hueco?",
@@ -647,7 +647,7 @@ const REL_CONTENT = {
 "¿Qué frase, tono o tema concreto te activa, y qué sientes justo antes de saltar?",
 "¿Cómo respondería en esa misma escena la adulta que quieres ser hoy?"
 ],
-"practice": "En cada discusión familiar, respira 3 veces antes de responder y anota si lo has logrado.",
+"practice": "Cada día, ten un gesto con tu familia desde la adulta que quieres ser: un mensaje, escuchar o ayudar.",
 "covey": 1
 },
 "otro": {
@@ -953,7 +953,7 @@ try { const t = localStorage.getItem(KEY + '.tab'); if (t) UI.tab = t; } catch (
 
 /* ============ Cálculos ============ */
 const allChallenges = () => [...S.books.flatMap(b => (b.chapters || []).flatMap(c => c.challenges.map(ch => ({ ...ch, book: b, chapter: c })))),
-  ...S.rel.map(e => ({ id: 'r-' + e.id, type: 'daily', text: e.practice || relContent(e.pattern).practice }))];
+  ...S.rel.map(e => ({ id: 'r-' + e.id, type: 'daily', text: relContent(e.pattern).practice }))];
 const isDone = (cid, day = today()) => (S.checks[cid] || []).includes(day);
 function streak(cid) {
   const set = new Set(S.checks[cid] || []);
@@ -1083,7 +1083,7 @@ function viewHome() {
     <p class="small muted">${esc(rem.src)}</p>
   </section>
   <section class="card">
-    <div class="row between"><h2>Retos de hoy</h2><button class="link" data-a="go" data-tab="mente">Ver libros</button></div>
+    <div class="row between"><h2>Retos de hoy</h2><button class="link" data-a="go" data-tab="mente" data-area="lectura">Ver libros</button></div>
     ${act.length ? `<div>${act.map(challengeRow).join('')}</div>` : `<p class="muted">Activa retos desde los capítulos de tu libro y aparecerán aquí cada día.</p>`}
   </section>
   <div class="grid2">
@@ -1345,7 +1345,7 @@ function viewRel() {
   </section>
   <section class="card"><h3>${list.length ? 'Otras cosas que a veces pasan' : '¿Te pasa alguna de estas?'}</h3>
     <div class="chips">${pats.map(([k, l]) => `<button class="chip" data-a="relpat" data-k="${k}">${esc(l)}</button>`).join('')}</div></section>
-  ${area === 'pareja' ? `<section class="card note"><p class="small"><b>Importante.</b> Si en tu relación hay miedo, control, humillaciones o violencia, no es un problema de tu actitud. En España puedes llamar al <b class="num">016</b>: es gratis, atiende 24 h y no aparece en la factura.</p></section>` : ''}`;
+  ${area === 'pareja' ? `<section class="card note"><p class="small"><b>Importante.</b> Si en tu relación hay miedo, control, humillaciones o violencia, no es un problema de tu actitud. En España puedes llamar al <b class="num">016</b>: es gratis, atiende 24 h y no aparece en la factura. Si hay peligro inmediato, llama al <b class="num">112</b>.</p></section>` : ''}`;
 }
 
 function relEntry(e) {
@@ -1360,13 +1360,14 @@ function relEntry(e) {
     <form class="stack" data-form="relnote" data-id="${e.id}"><label class="f">Lo que he descubierto<textarea id="rn-${e.id}" name="text" required placeholder="Escribe sin filtro, solo lo vas a leer tú"></textarea></label><button class="btn quiet">Guardar reflexión</button></form>
     ${(e.notes || []).length ? `<div>${[...e.notes].reverse().map(n => `<div class="check"><div class="grow stack" style="gap:3px"><p>${esc(n.text)}</p><p class="small muted num">${fmtDay(n.date)}</p></div></div>`).join('')}</div>` : ''}</section>
   <section class="card"><div class="row between"><h2>Práctica diaria</h2><button class="btn sm ${on ? 'quiet' : 'ghost'}" data-a="relprac" data-id="${e.id}" aria-pressed="${on}">${on ? 'Activa' : 'Activar'}</button></div>
-    <p>${esc(e.practice || c.practice)}</p>${on ? challengeRow({ id: pid, type: 'daily', text: 'Marcar hoy' }) : '<p class="small muted">Actívala y aparecerá cada día en tus retos de Inicio, con tu racha.</p>'}</section>
+    <p>${esc(c.practice)}</p>${on ? challengeRow({ id: pid, type: 'daily', text: 'Marcar hoy' }) : '<p class="small muted">Actívala y aparecerá cada día en tus retos de Inicio, con tu racha.</p>'}</section>
   <section class="card"><h2>Para leer</h2>
     ${c.books.map(b => { const inList = hasBook(b.title); return `<div class="list-item"><div class="cover">${esc(b.title[0])}</div><div class="grow stack" style="gap:3px">
       <h3>${esc(b.title)}</h3><p class="small muted">${esc(b.author)}</p><p class="small">${esc(b.why)}</p>
       <div><button class="btn ghost sm" data-a="relbook" data-t="${esc(b.title)}" data-au="${esc(b.author)}" ${inList ? 'disabled' : ''}>${inList ? 'En tu lista' : 'Añadir a pendientes'}</button></div></div></div>`; }).join('')}
     ${c.text ? `<div class="check"><div class="grow stack" style="gap:3px"><p class="eyebrow">Para hoy, gratis</p><a class="ext" href="${esc(c.text.url)}" target="_blank" rel="noopener noreferrer">${esc(c.text.title)}</a><p class="small muted">${esc(c.text.source)}${c.text.lang === 'en' ? ' · en inglés' : ''}</p></div></div>` : ''}
-    ${c.covey ? `<p class="small muted">Conecta con <button class="link" data-a="book" data-id="b7h">${esc(SEVEN.chapters[c.covey].title)}</button> de Los 7 hábitos, el libro que estás leyendo.</p>` : ''}</section>
+    ${c.covey ? `<p class="small muted">Conecta con <button class="link" data-a="book" data-id="b7h">${esc(SEVEN.chapters[c.covey].title)}</button> de Los 7 hábitos${readingCovey() ? ', el libro que estás leyendo' : ', de Covey'}.</p>` : ''}</section>
+  ${e.area === 'pareja' ? `<section class="card note"><p class="small">Si en esta relación hay miedo, control, humillaciones o violencia, no es tu actitud lo que hay que cambiar. <b class="num">016</b> (gratis, 24 h, no aparece en la factura) · <b class="num">112</b> si hay peligro inmediato.</p></section>` : ''}
   ${aiCard('rel', e.id, 'Cuéntale a Claude tu caso y te propone preguntas, lecturas y un paso pequeño solo para esta situación.', '¿Algo más que quieras contarle? (opcional)', e.ai)}
   <section class="card"><div class="row between"><span class="small muted">¿Ya no quieres guardarlo?</span>
     ${UI.confirmDel === e.id ? `<div class="row"><button class="btn sm" data-a="reldelok" data-id="${e.id}">Borrar</button><button class="btn sm quiet" data-a="nodel">No</button></div>` : `<button class="link" data-a="reldel" data-id="${e.id}">Borrar</button>`}</div></section>`;
@@ -1439,18 +1440,35 @@ function topicView(t) {
 }
 
 /* ============ Pregúntale a Claude (capacidad `sample`, solo dentro de Claude) ============ */
-let SAMPLE = null, AI_CTL = null;
+let SAMPLE = null;
+const AI_RUN = {}, AI_NOTE = {}; // llamada en curso y último aviso, por id: sobreviven a render()
 (async () => {
   try { SAMPLE = (await window.claude?.use?.('sample')) || null; } catch (e) { SAMPLE = null; }
   if (SAMPLE) document.querySelectorAll('.ai-only').forEach(el => el.hidden = false);
 })();
+const aiTarget = (kind, id) => kind === 'rel' ? S.rel.find(x => x.id === id) : S.topics.find(x => x.id === id);
+function aiState(id, saved) {
+  const run = AI_RUN[id];
+  if (run) return { busy: true, html: run.text ? md(run.text) : '<p class="muted">Pensando…</p>' };
+  const note = AI_NOTE[id], base = saved ? md(saved.text) + `<p class="small muted num">Respuesta del ${fmtDay(saved.date)}</p>` : '';
+  return { busy: false, html: note ? (note.partial ? md(note.partial) : base) + note.msg : base };
+}
 function aiCard(kind, id, desc, ph, saved) {
+  const st = aiState(id, saved);
+  const sent = kind === 'rel' ? 'esta situación, tus reflexiones, tu edad y lo que escribas arriba' : 'este tema, tu lista, tus recursos, tu edad y lo que escribas arriba';
   return `<section class="card ai-only" ${SAMPLE ? '' : 'hidden'}><div class="row between"><h2>Pregúntale a Claude</h2><span class="pill pink">IA</span></div>
     <p class="small muted">${desc}</p>
     <form class="stack" data-form="ask" data-kind="${kind}" data-id="${id}" style="gap:8px"><textarea id="ax-${id}" name="extra" placeholder="${ph}" style="min-height:60px"></textarea>
-      <div class="row"><button class="btn" id="ab-${id}">${saved ? 'Preguntar otra vez' : 'Preguntar'}</button><button type="button" class="btn quiet" id="as-${id}" data-a="askstop" hidden>Parar</button></div></form>
-    <div class="ai-out" id="ao-${id}" ${saved ? '' : 'hidden'}>${saved ? md(saved.text) + `<p class="small muted num">Respuesta del ${fmtDay(saved.date)}</p>` : ''}</div>
-    <p class="small muted">Se envía a Claude solo lo de esta pantalla, desde tu cuenta.</p></section>`;
+      <div class="row"><button class="btn" id="ab-${id}" ${st.busy ? 'disabled' : ''}>${saved ? 'Preguntar otra vez' : 'Preguntar'}</button><button type="button" class="btn quiet" id="as-${id}" data-a="askstop" data-id="${id}" ${st.busy ? '' : 'hidden'}>Parar</button></div></form>
+    <div class="ai-out" id="ao-${id}" ${st.html ? '' : 'hidden'}>${st.html}</div>
+    <p class="small muted">Se envía a Claude ${sent}, desde tu cuenta.</p></section>`;
+}
+function paintAi(id, saved) { // actualiza la tarjeta que haya ahora en pantalla, si la hay
+  const out = document.getElementById('ao-' + id), btn = document.getElementById('ab-' + id), stop = document.getElementById('as-' + id);
+  if (!out) return;
+  const st = aiState(id, saved);
+  out.innerHTML = st.html; out.hidden = !st.html; btn.disabled = st.busy; stop.hidden = !st.busy;
+  btn.textContent = saved ? 'Preguntar otra vez' : 'Preguntar';
 }
 function md(t) {
   const inline = s => s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<i>$2</i>');
@@ -1468,22 +1486,24 @@ function md(t) {
 const AI_ERR = { rate_limited: 'Has preguntado mucho seguido. Prueba dentro de un rato.', refused: 'Claude no ha podido responder a esto. Prueba a contarlo de otra forma.',
   session_expired: 'Vuelve a iniciar sesión en Claude y pregunta otra vez.', prompt_too_large: 'Es demasiado texto. Acórtalo un poco.', empty_completion: 'No ha llegado respuesta. Prueba a contarlo de otra forma.' };
 const AI_OFF = ['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'];
+const readingCovey = () => (S.books.find(b => b.id === 'b7h') || {}).status === 'leyendo';
 function aiPrompt(kind, id, extra) {
   const age = ageOf(S.profile.birth);
   if (kind === 'rel') {
     const e = S.rel.find(x => x.id === id);
     const notes = (e.notes || []).slice(-3).map(n => '- ' + n.text).join('\n');
     return `Eres una guía cálida y honesta de crecimiento personal. Una mujer de ${age} años que vive en España quiere entender y mejorar una actitud suya en su relación con ${{ pareja: 'su pareja', familia: 'su familia', amigos: 'sus amigos' }[e.area]}.
+
+Antes de nada: si lo que cuenta sugiere miedo, control, humillación o violencia por parte de la otra persona, no lo trates como un problema de su actitud ni le propongas prácticas para adaptarse. Díselo con claridad y con cariño, y recomiéndale pedir ayuda: en España, el 016 (gratuito, 24 h) o el 112 si hay peligro inmediato.
+
 Situación que ha elegido: ${patLabel(e.pattern)}.
 Lo que cuenta: """${e.text}"""
-${notes ? `Reflexiones que ya ha escrito:\n${notes}\n` : ''}${extra ? `Añade: """${extra}"""\n` : ''}Está leyendo "Los 7 hábitos de la gente altamente efectiva" de Covey.
-
-Responde en español de España, en segunda persona, sin diagnosticar ni culpabilizar, en menos de 300 palabras, con este formato Markdown:
+${notes ? `Reflexiones que ya ha escrito:\n${notes}\n` : ''}${extra ? `Añade: """${extra}"""\n` : ''}${readingCovey() ? 'Está leyendo "Los 7 hábitos de la gente altamente efectiva" de Covey.\n' : ''}
+Si no es un caso así, responde en español de España, en segunda persona, sin diagnosticar ni culpabilizar, en menos de 300 palabras, con este formato Markdown:
 **Lo que puede haber debajo**: 2-3 frases.
 **Preguntas para ti**: 3 preguntas en lista.
 **Para leer**: 2 libros con edición en español (título — autor: por qué) y 1 texto o charla breve y gratuita (título y autor, sin enlaces).
-**Un paso pequeño**: una práctica concreta para esta semana.
-Si lo que cuenta sugiere miedo, control, humillación o violencia por parte de la otra persona, dilo con claridad, no lo trates como un problema de su actitud y recomienda pedir ayuda (en España, el 016).`;
+**Un paso pequeño**: una práctica concreta para esta semana.`;
   }
   const t = S.topics.find(x => x.id === id), by = s => t.items.filter(i => i.status === s).map(i => i.text).join('; ') || 'nada';
   return `Ayuda a una mujer de ${age} años que vive en España a aprender "${t.name}".
@@ -1500,21 +1520,18 @@ Responde en español de España, en segunda persona, en menos de 250 palabras, c
 No inventes enlaces: si recomiendas un recurso, di solo su nombre.`;
 }
 async function ask(kind, id, extra) {
-  if (!SAMPLE) return;
-  const out = document.getElementById('ao-' + id), btn = document.getElementById('ab-' + id), stop = document.getElementById('as-' + id);
-  AI_CTL = new AbortController();
-  out.hidden = false; out.innerHTML = '<p class="muted">Pensando…</p>'; btn.disabled = true; stop.hidden = false;
-  const target = kind === 'rel' ? S.rel.find(x => x.id === id) : S.topics.find(x => x.id === id);
+  if (!SAMPLE || AI_RUN[id] || !aiTarget(kind, id)) return;
+  const ctl = new AbortController(), saved = () => aiTarget(kind, id)?.ai;
+  AI_RUN[id] = { ctl, text: '' }; delete AI_NOTE[id]; paintAi(id, saved());
   try {
-    const { text } = await SAMPLE(aiPrompt(kind, id, extra), { signal: AI_CTL.signal, onText: ({ text }) => { out.innerHTML = md(text); } });
-    target.ai = { text, date: today() }; save();
-    out.innerHTML = md(text) + `<p class="small muted num">Respuesta del ${fmtDay(today())}</p>`;
+    const { text } = await SAMPLE(aiPrompt(kind, id, extra), { signal: ctl.signal, cache: false,
+      onText: ({ text }) => { if (AI_RUN[id]) { AI_RUN[id].text = text; paintAi(id, saved()); } } });
+    const t = aiTarget(kind, id); if (t) { t.ai = { text, date: today() }; save(); }
   } catch (e) {
     if (AI_OFF.includes(e.code)) { SAMPLE = null; document.querySelectorAll('.ai-only').forEach(el => el.hidden = true); return; }
-    const keep = e.code === 'refused' ? '' : (e.text ? md(e.text) : '');
-    out.innerHTML = keep + (e.code === 'cancelled' ? '' : `<p class="small" style="color:var(--warn)">${AI_ERR[e.code] || 'Se ha cortado la conexión. Vuelve a intentarlo.'}</p>`);
-    if (!keep && e.code === 'cancelled') out.hidden = true;
-  } finally { btn.disabled = false; stop.hidden = true; AI_CTL = null; }
+    const partial = e.code === 'refused' ? '' : (e.text || '');
+    AI_NOTE[id] = { partial, msg: e.code === 'cancelled' ? (partial ? '<p class="small muted">Parada.</p>' : '') : `<p class="small" style="color:var(--warn)">${AI_ERR[e.code] || 'Se ha cortado la conexión. Vuelve a intentarlo.'}</p>` };
+  } finally { delete AI_RUN[id]; paintAi(id, saved()); }
 }
 
 /* ============ Hojas (formularios) ============ */
@@ -1569,10 +1586,17 @@ const TABS = [
 let toastT;
 function toast(msg) { clearTimeout(toastT); const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.querySelector('.toast')?.remove(); document.body.appendChild(t); toastT = setTimeout(() => t.remove(), 1800); }
 function render() {
+  const keep = {}; // lo que estás escribiendo y aún no has guardado sobrevive al repintado
+  document.querySelectorAll('#root input[id], #root textarea[id], #root select[id], #layer input[id], #layer textarea[id], #layer select[id]').forEach(el => {
+    if (el.type === 'checkbox') { if (el.checked !== el.defaultChecked) keep[el.id] = { checked: el.checked }; }
+    else if (el.tagName === 'SELECT') { if ([...el.options].some(o => o.selected !== o.defaultSelected)) keep[el.id] = { value: el.value }; }
+    else if (el.value !== el.defaultValue) keep[el.id] = { value: el.value };
+  });
   const v = { home: viewHome, mente: viewMind, cuerpo: viewBody, emocion: viewEmotion, relaciones: viewRel, proyectos: viewProjects, perfil: viewProfile }[UI.tab] || viewHome;
   document.getElementById('root').innerHTML = v();
   document.getElementById('tabs').innerHTML = TABS.map(([k, l, d]) => `<button data-a="go" data-tab="${k}" ${UI.tab === k ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>${l}</button>`).join('');
   document.getElementById('layer').innerHTML = sheet();
+  for (const [id, v] of Object.entries(keep)) { const el = document.getElementById(id); if (!el) continue; if ('checked' in v) el.checked = v.checked; else el.value = v.value; }
 }
 function commit(msg) { save(); render(); if (msg) toast(msg); }
 
@@ -1581,7 +1605,7 @@ document.addEventListener('click', e => {
   const a = el.dataset.a, d = el.dataset;
   if (a === 'close') { if (e.target !== el) return; UI.sheet = null; return render(); }
   if (a === 'pstatus' || a === 'club' || a === 'relstatus') return;
-  if (a === 'go') { UI.tab = d.tab; UI.bookId = null; UI.topicId = null; UI.relId = null; UI.confirmReset = false; UI.confirmDel = null; try { localStorage.setItem(KEY + '.tab', d.tab === 'perfil' ? 'home' : d.tab); } catch (_) {} window.scrollTo(0, 0); return render(); }
+  if (a === 'go') { UI.tab = d.tab; UI.bookId = null; UI.topicId = null; UI.relId = null; UI.confirmReset = false; UI.confirmDel = null; if (d.area) { UI.mindArea = d.area; UI.mind = 'books'; } try { localStorage.setItem(KEY + '.tab', d.tab === 'perfil' ? 'home' : d.tab); } catch (_) {} window.scrollTo(0, 0); return render(); }
   if (a === 'mind') { UI.mind = d.k; UI.bookId = null; return render(); }
   if (a === 'body') { UI.body = d.k; return render(); }
   if (a === 'book') { UI.tab = 'mente'; UI.mindArea = 'lectura'; UI.bookId = d.id; window.scrollTo(0, 0); return render(); }
@@ -1600,7 +1624,7 @@ document.addEventListener('click', e => {
   if (a === 'nodel') { UI.confirmDel = null; return render(); }
   if (a === 'reldelok') { S.rel = S.rel.filter(e => e.id !== d.id); S.active = S.active.filter(x => x !== 'r-' + d.id); delete S.checks['r-' + d.id]; UI.relId = null; UI.confirmDel = null; return commit('Borrado'); }
   if (a === 'tdelok') { S.topics = S.topics.filter(t => t.id !== d.id); UI.topicId = null; UI.confirmDel = null; return commit('Tema borrado'); }
-  if (a === 'askstop') { AI_CTL?.abort(); return; }
+  if (a === 'askstop') { AI_RUN[d.id]?.ctl.abort(); return; }
   const topic = d.t && S.topics.find(t => t.id === d.t);
   if (topic) {
     const item = topic.items.find(i => i.id === d.id), res = topic.resources.find(r => r.id === d.id);
@@ -1644,20 +1668,20 @@ document.addEventListener('submit', e => {
   if (kind === 'measure') { const m = { date: fd.date }; ['cintura', 'cadera', 'gluteo', 'muslo', 'brazo'].forEach(k => m[k] = n(fd[k])); S.measures = S.measures.filter(x => x.date !== fd.date); S.measures.push(m); }
   if (kind === 'project') S.projects.push({ id: uid(), name: fd.name.trim(), area: fd.area.trim(), status: 'idea', tasks: fd.tasks.split('\n').map(t => t.trim()).filter(Boolean).map(text => ({ id: uid(), text, done: false })) });
   if (kind === 'ask') { ask(f.dataset.kind, f.dataset.id, (fd.extra || '').trim()); return; }
-  if (kind === 'rel') { const id = uid(); S.rel.push({ id, area: UI.relArea, pattern: fd.pattern, text: fd.text.trim(), date: today(), status: 'abierto', notes: [], practice: relContent(fd.pattern).practice }); UI.sheet = null; UI.relId = id; window.scrollTo(0, 0); return commit('Guardado'); }
+  if (kind === 'rel') { const id = uid(); S.rel.push({ id, area: UI.relArea, pattern: fd.pattern, text: fd.text.trim(), date: today(), status: 'abierto', notes: [] }); UI.sheet = null; UI.relId = id; window.scrollTo(0, 0); f.reset(); return commit('Guardado'); }
   if (kind === 'relnote') { const e = S.rel.find(x => x.id === f.dataset.id); (e.notes = e.notes || []).push({ date: today(), text: fd.text.trim() }); }
   if (kind === 'topic') { const id = uid(); S.topics.push({ id, key: '', name: fd.name.trim(), items: [], resources: [] }); UI.topicId = id; }
-  if (kind === 'item') { if (!fd.text.trim()) return; S.topics.find(t => t.id === f.dataset.t).items.push({ id: uid(), text: fd.text.trim(), status: 'pendiente', hard: !!fd.hard }); return commit('Añadido'); }
+  if (kind === 'item') { if (!fd.text.trim()) return; S.topics.find(t => t.id === f.dataset.t).items.push({ id: uid(), text: fd.text.trim(), status: 'pendiente', hard: !!fd.hard }); f.reset(); return commit('Añadido'); }
   if (kind === 'res') { const url = safeUrl(fd.url); if (!url) return toast('Ese enlace no parece válido');
-    S.topics.find(t => t.id === f.dataset.t).resources.push({ id: uid(), url, title: fd.title.trim() || hostOf(url), type: fd.type, note: fd.note.trim(), seen: false }); return commit('Enlace guardado'); }
-  if (kind === 'task') { if (!fd.text.trim()) return; S.projects.find(p => p.id === f.dataset.p).tasks.push({ id: uid(), text: fd.text.trim(), done: false }); return commit(); }
+    S.topics.find(t => t.id === f.dataset.t).resources.push({ id: uid(), url, title: fd.title.trim() || hostOf(url), type: fd.type, note: fd.note.trim(), seen: false }); f.reset(); return commit('Enlace guardado'); }
+  if (kind === 'task') { if (!fd.text.trim()) return; S.projects.find(p => p.id === f.dataset.p).tasks.push({ id: uid(), text: fd.text.trim(), done: false }); f.reset(); return commit(); }
   if (kind === 'log') { const ex = Object.keys(EX).filter(id => fd['x-' + id]).map(id => ({ id, sets: n(fd['s-' + id]) || 1 }));
     if (!ex.length) return toast('Marca al menos un ejercicio'); S.workouts.push({ id: uid(), date: fd.date, name: fd.name.trim() || 'Entreno', ex }); }
   if (kind === 'page') { const b = S.books.find(x => x.id === UI.bookId); b.page = Math.min(b.pages, Math.max(0, n(fd.page) || 0)); b.status = fd.status; }
   if (kind === 'day') S.days[today()] = { ...(S.days[today()] || {}), steps: n(fd.steps) || 0, intake: n(fd.intake) || 0 };
   if (kind === 'profile') { ['height', 'deficit', 'stepGoal'].forEach(k => { if (n(fd[k]) != null) S.profile[k] = n(fd[k]); }); S.profile.goalWeight = n(fd.goalWeight); if (fd.birth) S.profile.birth = fd.birth; }
   if (kind === 'moodnote') S.moods[today()] = { ...(S.moods[today()] || {}), note: fd.note };
-  UI.sheet = null; commit('Guardado');
+  f.reset(); UI.sheet = null; commit('Guardado');
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && UI.sheet) { UI.sheet = null; render(); } });
 render();
