@@ -323,7 +323,8 @@ try { S = JSON.parse(localStorage.getItem(KEY)) || seed(); } catch (e) { S = see
 if (!S.profile.birth) { // v1 → v2: datos reales de María
   S.profile = { ...S.profile, birth: '2003-04-01', height: 169, goalWeight: null };
   delete S.profile.age;
-  if (S.example) S.weights = [{ date: today(), kg: 67 }];
+  if (S.example || !S.weights.length) S.weights = [{ date: today(), kg: 67 }];
+  S.workouts.forEach(w => w.ex.forEach(e => { if (e.id === 'cinta') e.sets = 1; })); // v1 guardaba la cinta como 20 series
   S.v = 2;
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
 }
@@ -375,7 +376,7 @@ function weightChart() {
   const goal = S.profile.goalWeight;
   const W = 320, H = 150, L = 34, R = 10, T = 12, B = 24;
   const vals = pts.map(p => p.kg);
-  let lo = Math.floor(Math.min(...vals, goal || Infinity) - .5), hi = Math.ceil(Math.max(...vals) + .5);
+  let lo = Math.floor(Math.min(...vals, goal || Infinity) - .5), hi = Math.ceil(Math.max(...vals, goal || -Infinity) + .5);
   const x = i => L + i * (W - L - R) / (pts.length - 1);
   const y = v => T + (hi - v) * (H - T - B) / (hi - lo);
   const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.kg).toFixed(1)}`).join('');
@@ -773,8 +774,8 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('change', e => {
   const el = e.target;
-  if (el.dataset.a === 'pstatus') { S.projects.find(p => p.id === el.dataset.id).status = el.value; commit(); }
-  if (el.dataset.a === 'club') { S.profile.club = el.value; commit(); }
+  if (el.dataset.a === 'pstatus') { S.projects.find(p => p.id === el.dataset.id).status = el.value; commit(); document.getElementById(el.id)?.focus(); }
+  if (el.dataset.a === 'club') { S.profile.club = el.value; save(); el.closest('section').outerHTML = gymCard(); document.getElementById('f-club').focus(); }
   if (el.id === 'l-book') { UI.sheet = { type: 'learning', book: el.value }; render(); }
 });
 document.addEventListener('submit', e => {
