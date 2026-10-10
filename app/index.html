@@ -1013,8 +1013,14 @@ function normalize() { // repara la forma de todos los datos: antiguos, de otro 
   S.moods = dict(S.moods, v => { v = obj(v); const m = num(v.m, 0); return { ...(m >= 1 && m <= 5 ? { m: Math.round(m) } : {}), energy: num(v.energy, 3), note: str(v.note, 2000) }; });
   S.projects = arr(S.projects).filter(isPlain).map(pr => ({ id: id(pr.id), name: str(pr.name, 120), area: str(pr.area, 60), status: oneOf(pr.status, ['idea', 'en marcha', 'pausado', 'hecho'], 'idea'), next: str(pr.next, 200),
     tasks: arr(pr.tasks).filter(isPlain).map(t => ({ id: id(t.id), text: str(t.text, 300), done: !!t.done })).filter(t => t.text) })).filter(pr => pr.name);
-  S.rel = arr(S.rel).filter(isPlain).map(e => ({ id: id(e.id), area: oneOf(e.area, ['pareja', 'familia', 'amigos'], 'pareja'),
-    pattern: oneOf(e.pattern, ['celos', 'defensiva', 'escuchar', 'limites', 'enfado', 'control', 'evito', 'critica', 'rencor', 'aprobacion', 'comparacion', 'atencion', 'roles', 'otro'], 'otro'),
+  const sA = (v, n) => typeof v === 'string' ? v.slice(0, n) : '';
+  const analysis = (x, area) => isPlain(x) && (x.lo_que_veo || x.tu_parte) ? { titulo: sA(x.titulo, 80), tipo: sA(x.tipo, 30), lo_que_veo: sA(x.lo_que_veo, 1500), tu_parte: sA(x.tu_parte, 1200), otra_mirada: sA(x.otra_mirada, 1200),
+    preguntas: arr(x.preguntas).filter(q => typeof q === 'string').map(q => q.slice(0, 300)).slice(0, 4), practica: sA(x.practica, 160),
+    lecturas: arr(x.lecturas).filter(isPlain).map(b => ({ titulo: sA(b.titulo, 120), autor: sA(b.autor, 120), por_que: sA(b.por_que, 300) })).filter(b => b.titulo).slice(0, 3),
+    alerta: ['maltrato', 'autolesion', 'alimentacion'].includes(x.alerta) ? x.alerta : '', at: date(x.at) } : undefined;
+  S.rel = arr(S.rel).filter(isPlain).map(e => ({ id: id(e.id), area: oneOf(e.area, ['pareja', 'familia', 'amigos', 'yo'], 'pareja'),
+    pattern: oneOf(e.pattern, ['celos', 'defensiva', 'escuchar', 'limites', 'enfado', 'control', 'evito', 'critica', 'rencor', 'aprobacion', 'comparacion', 'atencion', 'roles', 'autoexigencia', 'autocritica', 'autoestima', 'cuerpo', 'procrastinacion', 'ansiedad', 'descuido', 'culpa', 'rumbo', 'otro'], 'otro'),
+    analysis: analysis(e.analysis), thread: arr(e.thread).filter(m => isPlain(m) && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim()).map(m => ({ role: m.role, content: m.content.slice(0, 8000), at: date(m.at) })).slice(-20),
     text: str(e.text, 5000), date: date(e.date), status: oneOf(e.status, ['abierto', 'trabajando', 'mejor'], 'abierto'),
     notes: arr(e.notes).filter(isPlain).map(n => ({ date: date(n.date), text: str(n.text, 5000) })).filter(n => n.text), ai: ai(e.ai) })).filter(e => e.text);
   S.topics = arr(S.topics).filter(isPlain).map(t => ({ id: id(t.id), key: Object.prototype.hasOwnProperty.call(LEARN, t.key) ? t.key : '', name: str(t.name, 60),
@@ -1039,7 +1045,7 @@ try { const t = localStorage.getItem(KEY + '.tab'); if (t) UI.tab = t; } catch (
 
 /* ============ Cálculos ============ */
 const allChallenges = () => [...S.books.flatMap(b => (b.chapters || []).flatMap(c => c.challenges.map(ch => ({ ...ch, book: b, chapter: c })))),
-  ...S.rel.map(e => ({ id: 'r-' + e.id, type: 'daily', text: relContent(e.pattern).practice }))];
+  ...S.rel.map(e => ({ id: 'r-' + e.id, type: 'daily', text: relPractice(e) }))];
 const isDone = (cid, day = today()) => (S.checks[cid] || []).includes(day);
 function streak(cid) {
   const set = new Set(S.checks[cid] || []);
@@ -1668,62 +1674,177 @@ function viewProfile() {
 }
 
 /* ============ Relaciones ============ */
-const REL_AREAS = [['pareja', 'Pareja'], ['familia', 'Familia'], ['amigos', 'Amigos']];
-const REL_PATTERNS = [
-  ['celos', 'Celos o inseguridad'], ['defensiva', 'Me pongo a la defensiva cuando discutimos'], ['escuchar', 'Me cuesta escuchar sin interrumpir o juzgar'],
-  ['limites', 'Me cuesta poner límites o decir que no'], ['enfado', 'Reacciono con enfado o de forma impulsiva'], ['control', 'Necesito tener el control'],
-  ['evito', 'Evito los conflictos y me lo guardo'], ['critica', 'Critico o juzgo mucho'], ['rencor', 'Guardo rencor o me cuesta perdonar'],
-  ['aprobacion', 'Necesito la aprobación de los demás'], ['comparacion', 'Me comparo o siento envidia'], ['atencion', 'No dedico tiempo ni atención de calidad'],
-  ['roles', 'Con mi familia vuelvo a mis viejos roles', ['familia']], ['otro', 'Otra cosa'],
+const REL_AREAS = [['pareja', 'Pareja'], ['familia', 'Familia'], ['amigos', 'Amigos'], ['yo', 'Conmigo']];
+const R3 = ['pareja', 'familia', 'amigos'], RALL = [...R3, 'yo'];
+const REL_PATTERNS = [ // tipos de situación: los elige la app (o Claude) a partir de lo que escribes
+  ['celos', 'Celos o inseguridad', R3], ['defensiva', 'Me pongo a la defensiva', R3], ['escuchar', 'Me cuesta escuchar', R3],
+  ['limites', 'Me cuesta poner límites', R3], ['enfado', 'Reacciono con enfado', R3], ['control', 'Necesito tener el control', R3],
+  ['evito', 'Evito los conflictos', R3], ['critica', 'Critico o juzgo mucho', R3], ['rencor', 'Me cuesta perdonar', R3],
+  ['aprobacion', 'Necesito aprobación', RALL], ['comparacion', 'Me comparo', RALL], ['atencion', 'No dedico tiempo ni atención', R3],
+  ['roles', 'Vuelvo a mis viejos roles', ['familia']],
+  ['autoexigencia', 'Autoexigencia y perfeccionismo', ['yo']], ['autocritica', 'Me hablo fatal', ['yo']], ['autoestima', 'Inseguridad y autoestima', ['yo']],
+  ['cuerpo', 'Mi cuerpo y la comida', ['yo']], ['procrastinacion', 'Procrastino', ['yo']], ['ansiedad', 'Le doy vueltas a todo', ['yo']],
+  ['descuido', 'No me cuido', ['yo']], ['culpa', 'Culpa', ['yo']], ['rumbo', 'No sé lo que quiero', ['yo']], ['otro', 'Otra cosa', RALL],
 ];
 const REL_STATUS = [['abierto', 'Abierto', ''], ['trabajando', 'Trabajándolo', 'pink'], ['mejor', 'Lo llevo mejor', 'ok']];
 const patLabel = id => (REL_PATTERNS.find(p => p[0] === id) || REL_PATTERNS[REL_PATTERNS.length - 1])[1];
+const patsFor = area => REL_PATTERNS.filter(p => p[2].includes(area)).map(p => p[0]);
 const relContent = id => REL_CONTENT[id] || REL_CONTENT.otro;
 const areaLabel = id => (REL_AREAS.find(a => a[0] === id) || REL_AREAS[0])[1];
 const hasBook = t => S.books.some(b => b.title.toLowerCase() === t.toLowerCase());
+const relTitle = e => (e.analysis && e.analysis.titulo) || patLabel(e.pattern);
+const relPractice = e => (e.analysis && e.analysis.practica) || relContent(e.pattern).practice;
+const AREA_INTRO = { pareja: 'Cuéntame una situación con tu pareja en la que no te gustó cómo reaccionaste o algo que te preocupa de cómo te relacionas.',
+  familia: 'Cuéntame una situación con tu familia que te haya removido o en la que no te gustó tu actitud.',
+  amigos: 'Cuéntame una situación con tus amigos o amigas que te esté dando vueltas.',
+  yo: 'Cómo te hablas, te tratas y te cuidas. Cuéntame lo que te pasa contigo misma, sin filtro.' };
+const STARTERS = { pareja: ['Últimamente me pongo a la defensiva cuando…', 'Me molestó que… y reaccioné…'], familia: ['Cuando estoy con mi familia acabo…', 'Me dolió que…'],
+  amigos: ['Con una amiga me pasa que…', 'Me cuesta decir que no cuando…'], yo: ['Me exijo tanto que…', 'Cuando fallo, me digo…', 'Me cuesta empezar…'] };
+const KEYWORDS = [ // si Claude no está disponible, la app elige el tipo por palabras clave
+  [/celos|celosa/i, 'celos'], [/defensiv|me justific|excusa/i, 'defensiva'], [/interrump|no (le )?escuch/i, 'escuchar'], [/decir que no|l[ií]mite/i, 'limites'],
+  [/grit|enfad|rabia|explot|borde|cabre/i, 'enfado'], [/control|a mi manera/i, 'control'], [/me callo|me lo guardo|evito|no (le )?digo/i, 'evito'], [/critic|juzg/i, 'critica'],
+  [/rencor|perdon/i, 'rencor'], [/aprobaci|qu[eé] dir[aá]n|gustar a/i, 'aprobacion'], [/compar|envidia/i, 'comparacion'], [/m[oó]vil|no le dedico|poco tiempo/i, 'atencion'],
+  [/mi madre|mi padre|de peque|cuando era (pequeña|niña)/i, 'roles'], [/autoexig|perfecc|nunca es suficiente/i, 'autoexigencia'], [/me hablo|me insulto|tonta|in[uú]til|me machaco/i, 'autocritica'],
+  [/insegur|no valgo|autoestima|suficiente/i, 'autoestima'], [/cuerpo|gorda|espejo|atrac[oó]n|comida|b[aá]scula/i, 'cuerpo'], [/procrastin|lo dejo para|no cumplo|constan|pereza/i, 'procrastinacion'],
+  [/ansiedad|vueltas|agobi|rumi|nervios/i, 'ansiedad'], [/descans|agotad|no me cuido|no duermo/i, 'descuido'], [/culpa/i, 'culpa'], [/no s[eé] (lo )?qu[eé] quiero|rumbo|perdida/i, 'rumbo'],
+];
+const guessPattern = (text, area) => { const ok = patsFor(area); for (const [re, id] of KEYWORDS) if (ok.includes(id) && re.test(text)) return id; return 'otro'; };
+const SAFETY = {
+  maltrato: '<b>Esto no es un problema de tu actitud.</b> Lo que cuentas tiene señales de control o maltrato. En España, el <b class="num">016</b> te atiende gratis las 24 h y no aparece en la factura. Si hay peligro inmediato, llama al <b class="num">112</b>.',
+  autolesion: '<b>No estás sola.</b> Si piensas en hacerte daño, habla hoy con alguien de confianza o llama al <b class="num">024</b> (gratis, 24 h, línea de atención a la conducta suicida). Si hay peligro inmediato, al <b class="num">112</b>.',
+  alimentacion: '<b>Cuídate.</b> Lo que cuentas sobre la comida merece que lo hables con tu médica o con una psicóloga. Si pesar la comida te está haciendo daño, déjalo y pide ayuda; tu salud va primero.',
+};
+const REL_RUN = {}; // análisis o conversación en curso, por entrada
 
 function viewRel() {
   const head = `<header class="top"><div><p class="eyebrow">Relaciones personales</p><h1>Cómo me<br><em>relaciono</em></h1></div></header>`;
   const seg = `<div class="seg" role="group" aria-label="Relaciones">${REL_AREAS.map(([k, l]) => `<button aria-pressed="${UI.relArea === k && !UI.relId}" data-a="relarea" data-k="${k}">${l}</button>`).join('')}</div>`;
   if (UI.relId) { const e = S.rel.find(x => x.id === UI.relId); if (e) return head + relEntry(e); UI.relId = null; }
   const area = UI.relArea, list = S.rel.filter(e => e.area === area).sort((a, b) => b.date.localeCompare(a.date));
-  const pats = REL_PATTERNS.filter(p => !p[2] || p[2].includes(area));
   return head + seg + `
-  <section class="card"><div class="row between"><h2>${areaLabel(area)}</h2><button class="btn sm" data-a="sheet" data-s="rel">Apuntar</button></div>
-    <p class="small muted">Apunta algo de tu actitud que no te gusta. Te propongo preguntas para mirar hacia dentro, lecturas y una práctica pequeña para cada día.</p>
-    ${list.length ? `<div>${list.map(e => { const st = REL_STATUS.find(s => s[0] === e.status) || REL_STATUS[0];
+  <section class="card"><h2>${area === 'yo' ? 'Conmigo misma' : areaLabel(area)}</h2>
+    <p class="small muted">${AREA_INTRO[area]}</p>
+    <form class="stack" data-form="relnew" style="gap:8px"><textarea id="rnew-${area}" name="text" required placeholder="Escribe con tus palabras qué ha pasado, qué hiciste y cómo te sentiste" style="min-height:120px"></textarea>
+      <div class="chips">${STARTERS[area].map(t => `<button type="button" class="chip" data-a="relstarter" data-text="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+      <button class="btn">${SAMPLE ? 'Analizar con Claude' : 'Guardar'}</button></form>
+    <p class="small muted">${SAMPLE ? 'Claude te dará su análisis y su opinión. Se envía desde tu cuenta; nadie más lo ve.' : 'Al abrir la app desde Claude, Claude te dará además su análisis de cada situación.'}</p></section>
+  ${list.length ? `<section class="card"><h3>Lo que has escrito</h3><div>${list.map(e => { const st = REL_STATUS.find(s => s[0] === e.status) || REL_STATUS[0];
       return `<button class="tap list-item" data-a="rel" data-id="${e.id}"><div class="grow stack" style="gap:4px">
-        <div class="row between" style="align-items:flex-start"><h3 class="grow">${esc(patLabel(e.pattern))}</h3><span class="pill ${st[2]}">${st[1]}</span></div>
-        <p class="small muted clamp">${esc(e.text)}</p><p class="small muted num">${fmtDay(e.date)}${S.active.includes('r-' + e.id) ? ' · práctica activa' : ''}</p></div></button>`; }).join('')}</div>` : ''}
-  </section>
-  <section class="card"><h3>${list.length ? 'Otras cosas que a veces pasan' : '¿Te pasa alguna de estas?'}</h3>
-    <div class="chips">${pats.map(([k, l]) => `<button class="chip" data-a="relpat" data-k="${k}">${esc(l)}</button>`).join('')}</div></section>
-  ${area === 'pareja' ? `<section class="card note"><p class="small"><b>Importante.</b> Si en tu relación hay miedo, control, humillaciones o violencia, no es un problema de tu actitud. En España puedes llamar al <b class="num">016</b>: es gratis, atiende 24 h y no aparece en la factura. Si hay peligro inmediato, llama al <b class="num">112</b>.</p></section>` : ''}`;
+        <div class="row between" style="align-items:flex-start"><h3 class="grow">${esc(relTitle(e))}</h3><span class="pill ${st[2]}">${st[1]}</span></div>
+        <p class="small muted clamp">${esc(e.text)}</p><p class="small muted num">${fmtDay(e.date)}${S.active.includes('r-' + e.id) ? ' · práctica activa' : ''}${e.analysis ? ' · analizado' : ''}</p></div></button>`; }).join('')}</div></section>` : ''}
+  ${area === 'pareja' ? `<section class="card note"><p class="small"><b>Importante.</b> Si en tu relación hay miedo, control, humillaciones o violencia, no es un problema de tu actitud. En España puedes llamar al <b class="num">016</b>: es gratis, atiende 24 h y no aparece en la factura. Si hay peligro inmediato, llama al <b class="num">112</b>.</p></section>` : ''}
+  ${area === 'yo' ? `<section class="card note"><p class="small">Si alguna vez piensas en hacerte daño, llama al <b class="num">024</b> (gratis, 24 h) o al <b class="num">112</b> si hay peligro inmediato. Hablarlo ayuda.</p></section>` : ''}`;
 }
 
 function relEntry(e) {
-  const c = relContent(e.pattern), pid = 'r-' + e.id, on = S.active.includes(pid);
+  const c = relContent(e.pattern), A = e.analysis, pid = 'r-' + e.id, on = S.active.includes(pid), run = REL_RUN[e.id];
+  const books = [...(A ? A.lecturas : []).map(b => ({ title: b.titulo, author: b.autor, why: b.por_que })), ...c.books].filter((b, i, arr) => b.title && arr.findIndex(x => x.title.toLowerCase() === b.title.toLowerCase()) === i).slice(0, 4);
+  const sec = (t, x) => x ? `<div class="stack" style="gap:4px"><p class="kicker">${t}</p><p>${esc(x)}</p></div>` : '';
   return `<button class="link" data-a="relback">← ${areaLabel(e.area)}</button>
-  <section class="card"><p class="kicker">${esc(areaLabel(e.area))} · ${esc(patLabel(e.pattern))}</p>
+  ${A && A.alerta && SAFETY[A.alerta] ? `<section class="card note"><p>${SAFETY[A.alerta]}</p></section>` : ''}
+  <section class="card"><p class="kicker">${esc(areaLabel(e.area))} · ${esc(relTitle(e))}</p>
     <p>${esc(e.text)}</p>
     <div class="row between wrap"><span class="small muted num">${fmtDay(e.date)}</span>
       <select id="rs-${e.id}" data-a="relstatus" data-id="${e.id}" aria-label="Estado" style="width:auto;padding:6px 10px;font-size:13px">${REL_STATUS.map(([k, l]) => `<option value="${k}" ${k === e.status ? 'selected' : ''}>${l}</option>`).join('')}</select></div></section>
+  <section class="card"><div class="row between"><h2>Mi análisis</h2><span class="pill pink">Claude</span></div>
+    ${run && run.kind === 'analysis' ? '<p class="muted">Analizando lo que has escrito…</p>'
+      : A ? `${sec('Lo que veo', A.lo_que_veo)}${sec('Tu parte', A.tu_parte)}${sec(e.area === 'yo' ? 'Lo que te diría una buena amiga' : 'La otra mirada', A.otra_mirada)}<p class="small muted num">Análisis del ${fmtDay(A.at)}</p>`
+      : SAMPLE ? `<p class="small muted">Claude puede analizar lo que has escrito y darte su opinión.</p><div><button class="btn sm" data-a="relanalyze" data-id="${e.id}">Analizar con Claude</button></div>`
+      : '<p class="small muted">El análisis está disponible cuando abres la app desde Claude.</p>'}
+    ${run && run.err ? `<p class="small" style="color:var(--warn)">${esc(run.err)}</p>` : ''}</section>
   <section class="card"><h2>Mirar hacia dentro</h2>
-    <ol class="qs">${c.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ol>
+    <ol class="qs">${(A && A.preguntas.length ? A.preguntas : c.questions).map(q => `<li>${esc(q)}</li>`).join('')}</ol>
     <form class="stack" data-form="relnote" data-id="${e.id}"><label class="f">Lo que he descubierto<textarea id="rn-${e.id}" name="text" required placeholder="Escribe sin filtro, solo lo vas a leer tú"></textarea></label><button class="btn quiet">Guardar reflexión</button></form>
     ${(e.notes || []).length ? `<div>${[...e.notes].reverse().map(n => `<div class="check"><div class="grow stack" style="gap:3px"><p>${esc(n.text)}</p><p class="small muted num">${fmtDay(n.date)}</p></div></div>`).join('')}</div>` : ''}</section>
   <section class="card"><div class="row between"><h2>Práctica diaria</h2><button class="btn sm ${on ? 'quiet' : 'ghost'}" data-a="relprac" data-id="${e.id}" aria-pressed="${on}">${on ? 'Activa' : 'Activar'}</button></div>
-    <p>${esc(c.practice)}</p>${on ? challengeRow({ id: pid, type: 'daily', text: 'Marcar hoy' }) : '<p class="small muted">Actívala y aparecerá cada día en tus retos de Inicio, con tu racha.</p>'}</section>
+    <p>${esc(relPractice(e))}</p>${on ? challengeRow({ id: pid, type: 'daily', text: 'Marcar hoy' }) : '<p class="small muted">Actívala y aparecerá cada día en tus retos de Inicio, con tu racha.</p>'}</section>
   <section class="card"><h2>Para leer</h2>
-    ${c.books.map(b => { const inList = hasBook(b.title); return `<div class="list-item"><div class="cover">${esc(b.title[0])}</div><div class="grow stack" style="gap:3px">
+    ${books.map(b => { const inList = hasBook(b.title); return `<div class="list-item"><div class="cover">${esc(b.title[0])}</div><div class="grow stack" style="gap:3px">
       <h3>${esc(b.title)}</h3><p class="small muted">${esc(b.author)}</p><p class="small">${esc(b.why)}</p>
       <div><button class="btn ghost sm" data-a="relbook" data-t="${esc(b.title)}" data-au="${esc(b.author)}" ${inList ? 'disabled' : ''}>${inList ? 'En tu lista' : 'Añadir a pendientes'}</button></div></div></div>`; }).join('')}
     ${c.text ? `<div class="check"><div class="grow stack" style="gap:3px"><p class="eyebrow">Para hoy, gratis</p><a class="ext" href="${esc(c.text.url)}" target="_blank" rel="noopener noreferrer">${esc(c.text.title)}</a><p class="small muted">${esc(c.text.source)}${c.text.lang === 'en' ? ' · en inglés' : ''}</p></div></div>` : ''}
     ${c.covey ? `<p class="small muted">Conecta con <button class="link" data-a="book" data-id="b7h">${esc(SEVEN.chapters[c.covey].title)}</button> de Los 7 hábitos${readingCovey() ? ', el libro que estás leyendo' : ', de Covey'}.</p>` : ''}</section>
-  ${e.area === 'pareja' ? `<section class="card note"><p class="small">Si en esta relación hay miedo, control, humillaciones o violencia, no es tu actitud lo que hay que cambiar. <b class="num">016</b> (gratis, 24 h, no aparece en la factura) · <b class="num">112</b> si hay peligro inmediato.</p></section>` : ''}
-  ${aiCard('rel', e.id, 'Cuéntale a Claude tu caso y te propone preguntas, lecturas y un paso pequeño solo para esta situación.', '¿Algo más que quieras contarle? (opcional)', e.ai)}
+  ${SAMPLE || (e.thread || []).length ? `<section class="card chat"><h2>Seguir hablando</h2>
+    ${(e.thread || []).length || (run && run.kind === 'chat') ? `<div class="msgs">${(e.thread || []).map(m => `<div class="msg ${m.role === 'user' ? 'me' : 'ai'}">${m.role === 'user' ? `<p>${esc(m.content)}</p>` : md(m.content)}</div>`).join('')}
+      ${run && run.kind === 'chat' ? `<div class="msg ai" id="relchat-live">${run.text ? md(run.text) : '<p class="muted">Pensando…</p>'}</div>` : ''}</div>` : '<p class="small muted">Cuéntale a Claude lo que no te encaje del análisis, lo que pasó después o lo que te preocupa.</p>'}
+    ${SAMPLE ? `<form class="stack" data-form="relchat" data-id="${e.id}" style="gap:8px"><textarea id="rc-${e.id}" name="text" required placeholder="Escribe tu respuesta…" style="min-height:64px"></textarea>
+      <div class="row"><button class="btn" ${run && run.kind ? 'disabled' : ''}>Enviar</button>${run && run.kind ? `<button type="button" class="btn quiet" data-a="relstop" data-id="${e.id}">Parar</button>` : ''}</div></form>` : ''}</section>` : ''}
+  ${e.area === 'pareja' && !(A && A.alerta) ? `<section class="card note"><p class="small">Si en esta relación hay miedo, control, humillaciones o violencia, no es tu actitud lo que hay que cambiar. <b class="num">016</b> (gratis, 24 h, no aparece en la factura) · <b class="num">112</b> si hay peligro inmediato.</p></section>` : ''}
   <section class="card"><div class="row between"><span class="small muted">¿Ya no quieres guardarlo?</span>
     ${UI.confirmDel === e.id ? `<div class="row"><button class="btn sm" data-a="reldelok" data-id="${e.id}">Borrar</button><button class="btn sm quiet" data-a="nodel">No</button></div>` : `<button class="link" data-a="reldel" data-id="${e.id}">Borrar</button>`}</div></section>`;
+}
+
+/* Análisis de Claude: devuelve JSON con el análisis, el tipo de situación, preguntas, una práctica y lecturas */
+const REL_WHO = { pareja: 'con su pareja', familia: 'con su familia', amigos: 'con sus amigos', yo: 'consigo misma' };
+function relSafetyRules() {
+  return `SEGURIDAD, antes que nada:
+- Si describe miedo, control, humillación o violencia por parte de otra persona: alerta "maltrato". No lo trates como un problema de su actitud y recomiéndale el 016 (o el 112 si hay peligro).
+- Si aparecen ideas de hacerse daño o de no querer vivir: alerta "autolesion". Responde con mucho cuidado, anímala a hablar hoy con alguien y recomiéndale el 024 (gratis, 24 h) o el 112.
+- Si sugiere conductas alimentarias de riesgo (atracones, purgas, restricción extrema, miedo a comer): alerta "alimentacion" y recomiéndale hablar con su médica o una psicóloga.`;
+}
+function relAnalysisPrompt(e) {
+  const notes = (e.notes || []).slice(-3).map(n => '- ' + n.text).join('\n');
+  return `Eres una psicóloga cálida, honesta y directa (no diagnosticas). María tiene ${ageOf(S.profile.birth)} años, vive en España y escribe sobre su relación ${REL_WHO[e.area]}.${readingCovey() ? ' Está leyendo "Los 7 hábitos de la gente altamente efectiva".' : ''}
+
+Lo que escribe: """${e.text}"""
+${notes ? `Reflexiones que ya ha escrito:\n${notes}\n` : ''}
+${relSafetyRules()}
+
+Analiza la situación y dale feedback sincero y útil, sin culpabilizar ni dorar la píldora. Responde SOLO con un objeto JSON con estas claves (texto en español de España, en segunda persona):
+{"titulo": "resumen en 3-7 palabras",
+ "tipo": uno de ${JSON.stringify(patsFor(e.area))},
+ "lo_que_veo": "2-4 frases",
+ "tu_parte": "2-3 frases sobre lo que depende de ella",
+ "otra_mirada": "${e.area === 'yo' ? 'cómo se lo diría una buena amiga, 2-3 frases' : 'cómo puede estar viviéndolo la otra persona, 2-3 frases'}",
+ "preguntas": ["3 preguntas para pensar"],
+ "practica": "una práctica diaria que pueda marcar cada día, en imperativo, máximo 110 caracteres",
+ "lecturas": [{"titulo": "título de la edición española", "autor": "...", "por_que": "una frase"}, {"titulo": "...", "autor": "...", "por_que": "..."}],
+ "alerta": "" o "maltrato" o "autolesion" o "alimentacion"}`;
+}
+function cleanAnalysis(x, area) {
+  if (!x || typeof x !== 'object' || Array.isArray(x)) return null;
+  const s = (v, n) => typeof v === 'string' ? v.trim().slice(0, n) : '';
+  const a = { titulo: s(x.titulo, 80), tipo: patsFor(area).includes(x.tipo) ? x.tipo : '', lo_que_veo: s(x.lo_que_veo, 1500), tu_parte: s(x.tu_parte, 1200), otra_mirada: s(x.otra_mirada, 1200),
+    preguntas: (Array.isArray(x.preguntas) ? x.preguntas : []).map(q => s(q, 300)).filter(Boolean).slice(0, 4), practica: s(x.practica, 160),
+    lecturas: (Array.isArray(x.lecturas) ? x.lecturas : []).filter(b => b && typeof b === 'object').map(b => ({ titulo: s(b.titulo, 120), autor: s(b.autor, 120), por_que: s(b.por_que, 300) })).filter(b => b.titulo).slice(0, 3),
+    alerta: ['maltrato', 'autolesion', 'alimentacion'].includes(x.alerta) ? x.alerta : '', at: today() };
+  return a.lo_que_veo || a.tu_parte ? a : null;
+}
+async function relAnalyze(id) {
+  const e = S.rel.find(x => x.id === id); if (!e || !SAMPLE || (REL_RUN[id] && REL_RUN[id].kind)) return;
+  const ctl = new AbortController(); REL_RUN[id] = { kind: 'analysis', ctl }; render();
+  try {
+    const raw = await SAMPLE.json(relAnalysisPrompt(e), { signal: ctl.signal, cache: false });
+    const t = S.rel.find(x => x.id === id), a = t && cleanAnalysis(raw, t.area);
+    if (t && a) { t.analysis = a; if (a.tipo) t.pattern = a.tipo; delete REL_RUN[id]; save(); }
+    else REL_RUN[id] = { err: 'La respuesta no ha llegado completa. Vuelve a intentarlo.' };
+  } catch (err) {
+    if (AI_OFF.includes(err.code)) { SAMPLE = null; delete REL_RUN[id]; }
+    else REL_RUN[id] = err.code === 'cancelled' ? undefined : { err: AI_ERR[err.code] || 'Se ha cortado la conexión. Vuelve a intentarlo.' };
+    if (!REL_RUN[id]) delete REL_RUN[id];
+  } finally { if (REL_RUN[id] && REL_RUN[id].kind) delete REL_RUN[id]; render(); }
+}
+async function relChat(id, text) {
+  const e = S.rel.find(x => x.id === id); if (!e || !SAMPLE || (REL_RUN[id] && REL_RUN[id].kind) || !text) return;
+  e.thread = (e.thread || []).concat({ role: 'user', content: text.slice(0, 4000), at: today() }).slice(-20); save();
+  const ctl = new AbortController(); REL_RUN[id] = { kind: 'chat', ctl, text: '' }; render();
+  try {
+    const A = e.analysis, intro = `Eres una psicóloga cálida, honesta y directa (no diagnosticas) que acompaña a María, de ${ageOf(S.profile.birth)} años, en una situación de su relación ${REL_WHO[e.area]}.
+Lo que escribió: """${e.text}"""
+${A ? `Tu análisis anterior: ${A.lo_que_veo} ${A.tu_parte} ${A.otra_mirada}` : ''}
+${(e.notes || []).length ? `Sus reflexiones: ${e.notes.slice(-3).map(n => n.text).join(' | ')}` : ''}
+${relSafetyRules()}
+Sigue la conversación en español de España, en segunda persona, con cariño y franqueza, en menos de 180 palabras. Si te pide un plan, que sea concreto.`;
+    const turns = [{ role: 'user', content: intro }, ...e.thread.slice(-12).map(m => ({ role: m.role, content: m.content }))];
+    const { text: answer } = await SAMPLE(turns, { signal: ctl.signal, cache: false, onText: ({ text: t }) => { if (REL_RUN[id]) { REL_RUN[id].text = t; const el = document.getElementById('relchat-live'); if (el) el.innerHTML = md(t); } } });
+    const t = S.rel.find(x => x.id === id); if (t) { t.thread.push({ role: 'assistant', content: answer, at: today() }); t.thread = t.thread.slice(-20); }
+  } catch (err) {
+    const t = S.rel.find(x => x.id === id);
+    if (AI_OFF.includes(err.code)) SAMPLE = null;
+    else if (t && err.code === 'refused') { t.thread.pop(); toast(AI_ERR.refused); }
+    else if (t && err.text) t.thread.push({ role: 'assistant', content: err.text + (err.code === 'cancelled' ? '\n\n(Parada)' : ''), at: today() });
+    else if (err.code !== 'cancelled') toast(AI_ERR[err.code] || 'Se ha cortado la conexión. Vuelve a intentarlo.');
+  } finally { delete REL_RUN[id]; save(); render(); }
 }
 
 /* ============ Aprendizaje ============ */
@@ -2181,7 +2302,7 @@ function buildContext() {
     + `. Racha pesando la comida: ${weighStreak()} días. Próxima compra: ${fmtDay(shopStart())}${S.diet.slot ? ` (hueco elegido: ${slotLabel(S.diet.slot)})` : ' (sin hueco elegido)'}. Lista para esa compra: `
     + Object.entries(shopList()).map(([id, q]) => `${FOODS[id].name} ${qtyLabel(FOODS[id], q)}${S.diet.have.includes(id) ? ' [ya lo tiene]' : ''}`).join('; ') + '.', 3000));
   L.push(clip(`\n## Proyectos\n` + (S.projects.map(pr => `- ${pr.name} (${pr.area || 'sin área'}, ${pr.status}): ` + pr.tasks.map(t => (t.done ? '[hecho] ' : '[pendiente] ') + t.text).join('; ')).join('\n') || 'ninguno'), 3500));
-  L.push(clip(`\n## Relaciones (situaciones que quiere mejorar de su actitud)\n` + (S.rel.map(e => `- ${areaLabel(e.area)} · ${patLabel(e.pattern)} (${(REL_STATUS.find(s => s[0] === e.status) || [, ''])[1]}, ${fmtDay(e.date)}): ${clip(e.text, 300)}${(e.notes || []).length ? ` | Última reflexión: ${clip(e.notes[e.notes.length - 1].text, 200)}` : ''}`).join('\n') || 'nada apuntado'), 3500));
+  L.push(clip(`\n## Relaciones (con su pareja, su familia, sus amigos y consigo misma)\n` + (S.rel.map(e => `- ${areaLabel(e.area)} · ${relTitle(e)} (${(REL_STATUS.find(s => s[0] === e.status) || [, ''])[1]}, ${fmtDay(e.date)}): ${clip(e.text, 300)}${(e.notes || []).length ? ` | Última reflexión: ${clip(e.notes[e.notes.length - 1].text, 200)}` : ''}`).join('\n') || 'nada apuntado'), 3500));
   L.push(clip(`\n## Aprendizaje\n` + (S.topics.map(t => `- ${t.name}: ` + t.items.map(i => `${i.text} (${i.status}${i.hard ? ', le cuesta' : ''})`).join('; ') + (t.resources.length ? ` | Recursos: ${t.resources.map(r => r.title).join(', ')}` : '')).join('\n') || 'nada'), 2500));
   L.push(clip(`\n## Lectura\n` + S.books.map(b => `- ${b.title} (${b.status}${b.status === 'leyendo' ? `, pág. ${b.page}/${b.pages}` : ''})`).join('\n'), 1200));
   const act = allChallenges().filter(c => S.active.includes(c.id));
@@ -2272,11 +2393,7 @@ function sheet() {
     ${b.chapters.length ? `<label class="f">Capítulo<select id="l-ch" name="chapter"><option value="">—</option>${b.chapters.map(c => `<option value="${c.id}">${esc(c.title)}</option>`).join('')}</select></label>` : ''}
     <label class="f">Qué me llevo<textarea id="l-text" name="text" required placeholder="Con tus palabras, para que te lo recuerde"></textarea></label>
     <button class="btn">Guardar</button></form>`; }
-  if (s.type === 'rel') { const area = UI.relArea, pats = REL_PATTERNS.filter(p => !p[2] || p[2].includes(area));
-    body = `<h2>${areaLabel(area)} · algo de mi actitud</h2><form class="stack" data-form="rel">
-    <label class="f">¿Qué te pasa?<select id="rl-pat" name="pattern">${pats.map(([k, l]) => `<option value="${k}" ${k === s.pattern ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
-    <label class="f">Cuéntalo con tus palabras<textarea id="rl-text" name="text" required placeholder="Qué pasó, qué hice yo y cómo me sentí. Solo lo ves tú."></textarea></label>
-    <button class="btn">Guardar</button></form>`; }
+
   if (s.type === 'salud') { const tpl = 's_FECHA_PASOS_ENERGIA_PESO';
     body = `<h2>Conectar Apple Salud</h2>
     <div class="stack" style="gap:8px"><label class="f" for="hp-in">¿Ya tienes el atajo? Si al tocarlo la app no ha dicho «Salud: … pasos», pega aquí lo que copió</label>
@@ -2364,7 +2481,9 @@ document.addEventListener('click', e => {
   if (a === 'relarea') { UI.relArea = d.k; UI.relId = null; return render(); }
   if (a === 'rel') { UI.relId = d.id; UI.confirmDel = null; window.scrollTo(0, 0); return render(); }
   if (a === 'relback') { UI.relId = null; return render(); }
-  if (a === 'relpat') { UI.sheet = { type: 'rel', pattern: d.k }; return render(); }
+  if (a === 'relstarter') { const el = document.getElementById('rnew-' + UI.relArea); if (el) { el.value = (el.value ? el.value.trimEnd() + ' ' : '') + d.text + ' '; el.focus(); } return; }
+  if (a === 'relanalyze') { relAnalyze(d.id); return; }
+  if (a === 'relstop') { REL_RUN[d.id]?.ctl?.abort(); return; }
   if (a === 'relprac') { const id = 'r-' + d.id, i = S.active.indexOf(id); i >= 0 ? S.active.splice(i, 1) : S.active.push(id); return commit(i >= 0 ? 'Práctica desactivada' : 'Práctica activada'); }
   if (a === 'relbook') { if (!hasBook(d.t)) S.books.push({ id: uid(), title: d.t, author: d.au, cat: 'Psicología', pages: 250, page: 0, status: 'pendiente', chapters: [] }); return commit('Añadido a pendientes'); }
   if (a === 'reldel' || a === 'tdel') { UI.confirmDel = d.id; return render(); }
@@ -2465,7 +2584,8 @@ document.addEventListener('submit', e => {
   if (kind === 'slot') { if (!fd.when) return; S.diet.slot = fd.when; f.reset(); return commit('Hueco guardado'); }
   if (kind === 'nextshop') { if (!fd.date) return; S.diet.nextShop = fd.date; S.diet.slot = null; S.diet.have = []; f.reset(); return commit('Día de compra cambiado'); }
   if (kind === 'ask') { ask(f.dataset.kind, f.dataset.id, (fd.extra || '').trim()); return; }
-  if (kind === 'rel') { const id = uid(); S.rel.push({ id, area: UI.relArea, pattern: fd.pattern, text: fd.text.trim(), date: today(), status: 'abierto', notes: [] }); UI.sheet = null; UI.relId = id; window.scrollTo(0, 0); f.reset(); return commit('Guardado'); }
+  if (kind === 'relnew') { const t = (fd.text || '').trim(); if (!t) return; const id = uid(); S.rel.push({ id, area: UI.relArea, pattern: guessPattern(t, UI.relArea), text: t.slice(0, 5000), date: today(), status: 'abierto', notes: [], thread: [] }); UI.relId = id; window.scrollTo(0, 0); f.reset(); commit('Guardado'); if (SAMPLE) relAnalyze(id); return; }
+  if (kind === 'relchat') { const t = (fd.text || '').trim(); if (!t) return; f.reset(); relChat(f.dataset.id, t); return; }
   if (kind === 'relnote') { const e = S.rel.find(x => x.id === f.dataset.id); (e.notes = e.notes || []).push({ date: today(), text: fd.text.trim() }); }
   if (kind === 'topic') { const id = uid(); S.topics.push({ id, key: '', name: fd.name.trim(), items: [], resources: [] }); UI.topicId = id; }
   if (kind === 'item') { if (!fd.text.trim()) return; S.topics.find(t => t.id === f.dataset.t).items.push({ id: uid(), text: fd.text.trim(), status: 'pendiente', hard: !!fd.hard }); f.reset(); return commit('Añadido'); }
