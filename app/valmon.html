@@ -1319,6 +1319,14 @@ function viewProjects() {
     </section>`; }).join('') : '<section class="card"><p class="muted">Crea tu primer proyecto y divídelo en pasos.</p></section>'}`;
 }
 
+function backupInfo() {
+  let b = null; try { b = JSON.parse(localStorage.getItem(KEY + '.backup') || 'null'); } catch (e) {}
+  if (!b || !b.S) return '';
+  const when = new Date(b.at);
+  return `<div class="stack" style="gap:8px;border-top:1px solid var(--line);padding-top:12px"><p class="small">Hay una copia de lo que tenía este dispositivo antes de conectarse (${when.toLocaleDateString('es-ES')}). Si echas algo en falta, puedes recuperarla: sustituirá a lo que hay ahora en todos tus dispositivos.</p>
+    ${UI.confirmDel === 'backup' ? '<div class="row wrap"><button class="btn sm" data-a="restoreok">Sí, recuperar la copia</button><button class="btn sm quiet" data-a="nodel">Cancelar</button></div>'
+      : '<div class="row wrap"><button class="btn sm ghost" data-a="restore">Recuperar la copia</button><button class="link" data-a="dropbackup">Borrar la copia</button></div>'}</div>`;
+}
 function viewProfile() {
   return `<button class="link" data-a="go" data-tab="home">← Inicio</button>
   <header class="top"><div><p class="eyebrow">Ajustes</p><h1>Tus <em>datos</em></h1></div></header>
@@ -1330,6 +1338,7 @@ function viewProfile() {
     ${SYNC.state === 'local' ? '<p class="small muted">Ahora mismo tus datos solo están en este dispositivo. Se conectan cuando abres la app desde Claude.</p>'
       : `<p class="small muted">Tus datos se guardan en la base de datos privada de esta app en tu cuenta de Claude: solo tú (y Claude, cuando se lo pides) podéis verlos. Así se sincronizan entre tus dispositivos y Claude puede leer y actualizar tus proyectos, relaciones, aprendizaje, salud y dieta cuando le preguntes.${SYNC.at ? ` Última sincronización: ${pad(SYNC.at.getHours())}:${pad(SYNC.at.getMinutes())}.` : ''}</p>`}
     ${SYNC.state === 'error' && SYNC.err ? `<p class="small" style="color:var(--warn)">${esc(SYNC.err)}</p>` : ''}
+    ${backupInfo()}
     <p class="small muted">Dentro de la app tienes el chat con Claude en Inicio. Fuera, en una conversación con Claude que pueda abrir artefactos, pásale el enlace de la app y pídele lo que necesites.</p></section>`;
 }
 
@@ -1706,8 +1715,17 @@ function applyRemote(sec, data) {
   return changed;
 }
 function onRemote(snap) {
+  if (SYNC.first && snap.metadata.fromCache) return; // la primera vez, esperar a la respuesta real del servidor
   let changed = false;
   const seen = new Set();
+  if (SYNC.first && !snap.empty) {
+    let synced = null; try { synced = localStorage.getItem(KEY + '.synced'); } catch (e) {}
+    if (!synced) { // primera vez de este dispositivo con una nube que ya tiene datos: copia de seguridad de lo local
+      try { localStorage.setItem(KEY + '.backup', JSON.stringify({ at: new Date().toISOString(), S })); } catch (e) {}
+      const rp = snap.docs.find(d => d.id === 'perfil'), remoteExample = rp ? (rp.data() || {}).example : undefined;
+      if (remoteExample === true && S.example === false) for (const sec in SECTIONS) DIRTY.add(sec); // lo real gana a lo de ejemplo
+    }
+  }
   for (const doc of snap.docs) {
     const sec = doc.id; if (!SECTIONS[sec]) continue; seen.add(sec);
     if (doc.metadata.hasPendingWrites || DIRTY.has(sec)) continue;
@@ -1715,8 +1733,9 @@ function onRemote(snap) {
     if (j === LAST[sec]) continue;
     if (applyRemote(sec, data)) { changed = true; LAST[sec] = JSON.stringify(pick(S, sec)); }
   }
-  if (SYNC.first && !snap.metadata.fromCache) { // primera conexión: lo que la nube no tiene se sube desde aquí
+  if (SYNC.first) { // primera conexión: lo que la nube no tiene se sube desde aquí
     SYNC.first = false;
+    try { localStorage.setItem(KEY + '.synced', '1'); } catch (e) {}
     for (const sec in SECTIONS) if (!seen.has(sec)) DIRTY.add(sec);
     keepDirty(); if (DIRTY.size) flush();
   }
@@ -1911,6 +1930,9 @@ document.addEventListener('click', e => {
   if (a === 'chatstop') { CHAT.run?.ctl.abort(); return; }
   if (a === 'chatclear') { UI.confirmDel = 'chat'; return render(); }
   if (a === 'chatclearok') { S.chat = []; UI.confirmDel = null; return commit(); }
+  if (a === 'restore') { UI.confirmDel = 'backup'; return render(); }
+  if (a === 'restoreok') { try { const b = JSON.parse(localStorage.getItem(KEY + '.backup')); S = b.S; normalize(); for (const sec in SECTIONS) { LAST[sec] = ''; } UI.confirmDel = null; return commit('Copia recuperada'); } catch (err) { return toast('No se ha podido recuperar la copia'); } }
+  if (a === 'dropbackup') { try { localStorage.removeItem(KEY + '.backup'); } catch (err) {} return render(); }
   if (a === 'askstop') { AI_RUN[d.id]?.ctl.abort(); return; }
   const topic = d.t && S.topics.find(t => t.id === d.t);
   if (topic) {
