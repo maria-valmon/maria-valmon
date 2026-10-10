@@ -1188,7 +1188,7 @@ function viewHome() {
   <section class="card">
     <div class="row between"><h2>Entreno</h2>${trainedToday ? '<span class="pill ok">Hecho hoy</span>' : '<span class="pill">Toca</span>'}</div>
     <div class="row between"><div class="grow"><h3>${esc(next.name)}</h3><p class="small muted">${next.ex.length} ejercicios · ${esc(next.focus)}</p></div>
-      <button class="btn sm" data-a="startlog" data-plan="${next.id}">${DRAFT && !DRAFT.id ? 'Continuar' : 'Empezar'}</button></div>
+      <button class="btn sm" data-a="startlog" data-plan="${next.id}" ${DRAFT ? 'data-resume="1"' : ''}>${DRAFT ? 'Continuar' : 'Empezar'}</button></div>
   </section>
   ${reading ? `<section class="card"><p class="eyebrow">Leyendo</p>
     <button class="tap row" data-a="book" data-id="${reading.id}"><div class="cover pink">${esc(reading.title[0])}</div>
@@ -1294,21 +1294,29 @@ const UNIT_LABEL = { reps: 'reps', seg: 'seg', min: 'min', m: 'metros' };
 const exKey = e => e.id; // los ejercicios de Hevy que se reconocen se guardan con el id de la app; el resto, con su propio id
 const workingSets = e => Array.isArray(e.log) && e.log.length ? e.log.filter(s => !s.warm && s.reps > 0) : [];
 const setCount = e => Array.isArray(e.log) && e.log.length ? workingSets(e).length : (e.sets || 0);
-const e1rm = s => s.kg > 0 && s.reps > 0 && s.reps <= 15 ? s.kg * (1 + s.reps / 30) : 0; // fórmula de Epley
+const e1rm = s => s.kg > 0 && s.reps > 0 ? s.kg * (1 + Math.min(s.reps, 15) / 30) : 0; // Epley; por encima de 15 reps cuenta como 15
 const kgTxt = k => fmt(k, k % 1 ? 1 : 0);
 const setTxt = s => s.kg > 0 ? `${kgTxt(s.kg)} kg × ${s.reps}` : `${s.reps}`;
-function exHistory(key) { // sesiones con detalle de este ejercicio, de la más reciente a la más antigua
-  const out = [];
-  for (const w of [...S.workouts].sort((a, b) => b.date.localeCompare(a.date))) for (const e of w.ex) if (exKey(e) === key && workingSets(e).length) out.push({ date: w.date, wid: w.id, sets: workingSets(e), e });
-  return out;
+function exHistory(key, opt = {}) { // una entrada por día (se juntan las series del mismo día), de la más reciente a la más antigua
+  const ws = S.workouts.map((w, i) => ({ w, i })).filter(({ w }) => w.id !== opt.excludeWid && (!opt.upTo || w.date <= opt.upTo))
+    .sort((a, b) => b.w.date.localeCompare(a.w.date) || b.i - a.i);
+  const byDay = new Map();
+  for (const { w } of ws) for (const e of w.ex) if (exKey(e) === key && workingSets(e).length) {
+    if (!byDay.has(w.date)) byDay.set(w.date, { date: w.date, wid: w.id, sets: [], e });
+    byDay.get(w.date).sets.push(...workingSets(e));
+  }
+  return [...byDay.values()];
 }
-const bestOf = sets => sets.reduce((b, s) => (e1rm(s) || s.kg * 100 + s.reps) > (e1rm(b) || b.kg * 100 + b.reps) ? s : b, sets[0]);
-function suggest(key, sc) { // doble progresión: si todas las series llegaron al tope del rango, sube peso; si no, intenta una repetición más
-  const h = exHistory(key)[0]; if (!h) return null;
+const isWeighted = h => h.some(x => x.sets.some(s => s.kg > 0)); // si alguna vez lleva peso, se mide por 1RM; si no, por repeticiones
+const score = (s, weighted) => weighted ? e1rm(s) : s.reps;
+const bestOf = (sets, weighted = sets.some(s => s.kg > 0)) => sets.reduce((b, s) => score(s, weighted) > score(b, weighted) ? s : b, sets[0]);
+const metric = (sets, weighted = sets.some(s => s.kg > 0)) => Math.max(...sets.map(s => score(s, weighted)));
+function suggest(key, sc, opt) { // doble progresión: si todas las series del plan llegaron al tope del rango, sube peso; si no, intenta una repetición más
+  const h = exHistory(key, opt)[0]; if (!h) return null;
   const p = parseScheme(sc), top = Math.max(...h.sets.map(s => s.kg));
   const atTop = h.sets.filter(s => s.kg === top);
   if (p.unit !== 'reps' || !top) return { kg: top || 0, reps: Math.min(p.hi, Math.max(...h.sets.map(s => s.reps)) + (p.unit === 'reps' ? 1 : 0)), up: false, last: h };
-  const done = atTop.length >= Math.min(p.sets, h.sets.length) && atTop.every(s => s.reps >= p.hi);
+  const done = atTop.length >= p.sets && atTop.every(s => s.reps >= p.hi);
   if (done) { const inc = top >= 40 ? 2.5 : 1; return { kg: Math.round((top + inc) * 2) / 2, reps: p.lo, up: true, last: h }; }
   return { kg: top, reps: Math.min(p.hi, Math.min(...atTop.map(s => s.reps)) + 1), up: false, last: h };
 }
@@ -1316,11 +1324,20 @@ function suggest(key, sc) { // doble progresión: si todas las series llegaron a
 let DRAFT = null; try { DRAFT = JSON.parse(localStorage.getItem(KEY + '.draft') || 'null'); } catch (e) { DRAFT = null; }
 if (DRAFT && (!Array.isArray(DRAFT.ex) || typeof DRAFT.date !== 'string')) DRAFT = null;
 const keepDraft = () => { try { localStorage.setItem(KEY + '.draft', JSON.stringify(DRAFT)); } catch (e) {} };
-function startLog(planId, editId) {
-  if (DRAFT && !editId && !planId && UI.body === 'log') return;
+const draftHasData = () => !!DRAFT && (!!DRAFT.id || DRAFT.ex.some(e => e.log.some(x => x.done || x.kg !== '' || x.reps !== '')));
+function startLog(planId, editId, force) {
+  if (DRAFT && !force) {
+    const same = editId ? DRAFT.id === editId : !DRAFT.id && (!planId || DRAFT.planId === planId);
+    if (same || (!editId && !planId && !DRAFT.id)) { UI.tab = 'cuerpo'; UI.body = 'log'; window.scrollTo(0, 0); return render(); }
+    if (draftHasData()) { UI.switchTo = { planId: planId || null, editId: editId || null }; UI.tab = 'cuerpo'; UI.body = 'log'; window.scrollTo(0, 0); return render(); }
+  }
+  UI.switchTo = null;
   if (editId) {
     const w = S.workouts.find(x => x.id === editId); if (!w) return;
-    DRAFT = { id: w.id, date: w.date, name: w.name, planId: w.planId || null, src: w.src, ex: w.ex.map(e => ({ id: e.id, n: e.n, m: e.m, sc: e.sc || '', log: (e.log && e.log.length ? e.log : Array.from({ length: e.sets || 1 }, () => ({ kg: 0, reps: 0 }))).map(s => ({ kg: s.kg || '', reps: s.reps || '', warm: !!s.warm, done: true })) })) };
+    DRAFT = { id: w.id, date: w.date, name: w.name, planId: w.planId || null, src: w.src, ex: w.ex.map(e => {
+      const hasLog = e.log && e.log.length;
+      return { id: e.id, n: e.n, m: e.m, sc: e.sc || '', ...(hasLog ? {} : { legacy: e.sets || 1 }), // entrenos antiguos con solo el nº de series: se conservan si no se rellenan
+        log: hasLog ? e.log.map(x => ({ kg: x.kg || '', reps: x.reps || '', warm: !!x.warm, done: true })) : Array.from({ length: e.sets || 1 }, () => ({ kg: '', reps: '', warm: false, done: false })) }; }) };
   } else {
     const p = PLAN.find(x => x.id === planId);
     DRAFT = { id: null, date: today(), name: p ? p.name : 'Entreno libre', planId: p ? p.id : null, started: new Date().toISOString(),
@@ -1332,17 +1349,20 @@ function viewLog() {
   if (!DRAFT) { UI.body = 'entrenos'; return bodyWorkouts(); }
   const D = DRAFT, doneSets = D.ex.reduce((a, e) => a + e.log.filter(s => s.done && !s.warm).length, 0);
   const options = Object.entries(EX).filter(([id]) => !D.ex.some(e => e.id === id)).map(([id, x]) => `<option value="${id}">${esc(x.n)}</option>`).join('');
-  return `<section class="card log-head"><div class="row between"><div class="grow"><p class="eyebrow">${D.id ? 'Editando entreno' : 'Entreno en curso'}</p>
+  const sw = UI.switchTo ? `<section class="card note"><p><b>Tienes ${D.id ? 'una corrección' : 'un entreno'} sin guardar: «${esc(D.name)}».</b> ${UI.switchTo.editId ? '¿Quieres dejarlo y abrir el entreno del historial?' : '¿Quieres dejarlo y empezar otro?'}</p>
+    <div class="row wrap"><button class="btn sm" data-a="lgkeep">Seguir con este</button><button class="btn sm quiet" data-a="lgswitch">Descartarlo y abrir el otro</button></div></section>` : '';
+  return sw + `<section class="card log-head"><div class="row between"><div class="grow"><p class="eyebrow">${D.id ? 'Editando entreno' : 'Entreno en curso'}</p>
       <input id="lg-name" data-lg="name" value="${esc(D.name)}" aria-label="Nombre del entreno" style="font-family:var(--display);font-weight:800;font-size:20px;background:transparent;border:0;padding:0"></div>
       <span class="pill pink num">${doneSets} series</span></div>
     <label class="f" style="max-width:180px">Fecha<input type="date" id="lg-date" data-lg="date" value="${D.date}"></label>
     ${UI.rest ? `<div class="rest" id="rest"><span>Descanso</span><b class="num" id="rest-t">${restLeft()}</b><button class="link" data-a="rest30">+30 s</button><button class="link" data-a="restoff">Saltar</button></div>` : ''}</section>
-  ${D.ex.map((e, i) => { const x = EX[e.id] || {}, p = parseScheme(e.sc), sg = suggest(exKey(e), e.sc), unit = UNIT_LABEL[p.unit];
+  ${D.ex.map((e, i) => { const x = EX[e.id] || {}, p = parseScheme(e.sc), sg = suggest(exKey(e), e.sc, { excludeWid: D.id, upTo: D.date }), unit = UNIT_LABEL[p.unit];
     return `<section class="card logex"><div class="row between" style="align-items:flex-start"><div class="grow"><h3>${esc(e.n || x.n || e.id)}</h3>
         <p class="small muted">${e.sc ? `Objetivo ${esc(e.sc)}` : ''}${sg ? `${e.sc ? ' · ' : ''}Última vez: ${sg.last.sets.map(setTxt).join(', ')}` : ''}</p>
         ${sg ? `<p class="small" style="color:${sg.up ? 'var(--ok)' : 'var(--pink-soft)'}">${sg.up ? `¡Toca subir! Prueba ${kgTxt(sg.kg)} kg × ${sg.reps}` : sg.kg ? `Hoy: ${kgTxt(sg.kg)} kg, intenta ${sg.reps} ${unit}` : `Hoy: intenta ${sg.reps} ${unit}`}</p>` : ''}</div>
         <button class="x" data-a="lgdelex" data-i="${i}" aria-label="Quitar ejercicio">×</button></div>
       <div class="sets"><div class="set-row head"><span>Serie</span><span>kg</span><span>${unit}</span><span></span></div>
+      ${e.legacy ? `<p class="small muted">Este entreno se guardó sin kg ni repeticiones (${e.legacy} series). Si no rellenas nada, se queda como estaba.</p>` : ''}
       ${e.log.map((s, j) => { const ph = sg ? { kg: sg.kg ? kgTxt(sg.kg) : '', reps: sg.reps } : { kg: '', reps: p.hi };
         return `<div class="set-row ${s.done ? 'done' : ''}">
           <button class="setno ${s.warm ? 'warm' : ''}" data-a="lgwarm" data-i="${i}" data-j="${j}" title="Tocar para marcar como calentamiento">${s.warm ? 'C' : j + 1 - e.log.slice(0, j).filter(x => x.warm).length}</button>
@@ -1362,17 +1382,18 @@ function saveLog() {
   const D = DRAFT; if (!D) return;
   const ex = D.ex.map(e => {
     const log = e.log.map(s => ({ kg: Math.max(0, +s.kg || 0), reps: Math.max(0, Math.round(+s.reps || 0)), warm: !!s.warm })).filter(s => s.reps > 0);
-    return { id: e.id, ...(e.n ? { n: e.n, m: e.m } : {}), ...(e.sc ? { sc: e.sc } : {}), sets: log.filter(s => !s.warm).length, log };
-  }).filter(e => e.log.length);
+    const base = { id: e.id, ...(e.n ? { n: e.n, m: e.m } : {}), ...(e.sc ? { sc: e.sc } : {}) };
+    if (!log.length && e.legacy) return { ...base, sets: e.legacy }; // sin rellenar: se conserva tal y como estaba
+    return { ...base, sets: log.filter(s => !s.warm).length, log };
+  }).filter(e => (e.log && e.log.length) || (!e.log && e.sets));
   if (!ex.length) return toast('Apunta al menos una serie con repeticiones');
   // récords: comparar con lo anterior a este entreno
   const prs = [];
   for (const e of ex) {
-    const prev = exHistory(exKey(e)).filter(h => h.wid !== D.id && h.date <= D.date).flatMap(h => h.sets);
-    if (!prev.length) continue;
-    const nb = Math.max(...workingSets(e).map(s => e1rm(s) || 0)), ob = Math.max(...prev.map(s => e1rm(s) || 0));
-    const nk = Math.max(...workingSets(e).map(s => s.kg)), ok = Math.max(...prev.map(s => s.kg));
-    if ((nb && nb > ob + 0.01) || nk > ok) prs.push(exName(e));
+    const ws = workingSets(e); if (!ws.length) continue;
+    const prevH = exHistory(exKey(e), { excludeWid: D.id, upTo: D.date }); if (!prevH.length) continue;
+    const prev = prevH.flatMap(h => h.sets), weighted = prev.some(x => x.kg > 0) || ws.some(x => x.kg > 0);
+    if (metric(ws, weighted) > metric(prev, weighted) + 0.01 || Math.max(...ws.map(x => x.kg)) > Math.max(...prev.map(x => x.kg))) prs.push(exName(e));
   }
   const w = { id: D.id || uid(), date: D.date, name: (D.name || 'Entreno').slice(0, 80), ...(D.planId ? { planId: D.planId } : {}), ...(D.src ? { src: D.src } : {}), ex };
   const i = S.workouts.findIndex(x => x.id === w.id); if (i >= 0) S.workouts[i] = w; else S.workouts.push(w);
@@ -1384,33 +1405,32 @@ function spark(vals, w = 110, h = 32) {
   const lo = Math.min(...vals), hi = Math.max(...vals), r = hi - lo || 1, x = i => 2 + i * (w - 4) / (vals.length - 1), y = v => h - 3 - (v - lo) * (h - 6) / r;
   return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><path d="${vals.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('')}" fill="none" stroke="var(--pink)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${x(vals.length - 1)}" cy="${y(vals[vals.length - 1])}" r="3" fill="var(--pink)"/></svg>`;
 }
-const metric = sets => { const b = bestOf(sets); return e1rm(b) || (b.kg ? b.kg : b.reps); };
 function bodyProgress() {
   if (UI.exDetail) return exDetail(UI.exDetail);
   const keys = [...new Set([...S.workouts].sort((a, b) => b.date.localeCompare(a.date)).flatMap(w => w.ex.filter(e => workingSets(e).length).map(exKey)))];
   if (!keys.length) return `<section class="card"><h2>Progreso</h2><p class="muted">Cuando guardes entrenos con kg y repeticiones, aquí verás cómo mejora cada ejercicio.</p><div><button class="btn sm" data-a="startlog" data-plan="${PLAN[S.workouts.length % PLAN.length].id}">Empezar entreno</button></div></section>`;
   return `<section class="card"><h2>Progreso por ejercicio</h2><p class="small muted">La línea es tu fuerza estimada (1RM) en cada sesión. Toca un ejercicio para ver el detalle.</p>
-    ${keys.map(k => { const h = exHistory(k), last = h[0], vals = h.slice(0, 10).reverse().map(x => metric(x.sets));
-      const old = h.find(x => daysBetween(x.date, last.date) >= 28) || h[h.length - 1], ch = old && old !== last ? (metric(last.sets) - metric(old.sets)) / metric(old.sets) * 100 : 0;
+    ${keys.map(k => { const h = exHistory(k), wt = isWeighted(h), last = h[0], vals = h.slice(0, 10).reverse().map(x => metric(x.sets, wt));
+      const old = h.find(x => daysBetween(x.date, last.date) >= 28) || h[h.length - 1], mo = old ? metric(old.sets, wt) : 0, ch = old && old !== last && mo ? (metric(last.sets, wt) - mo) / mo * 100 : 0;
       return `<button class="tap list-item" data-a="exd" data-k="${esc(k)}"><div class="grow stack" style="gap:3px;min-width:0"><h3>${esc(exName(last.e))}</h3>
-        <p class="small muted">Mejor serie: ${setTxt(bestOf(last.sets))} · ${fmtDay(last.date)} · ${h.length} ${h.length === 1 ? 'sesión' : 'sesiones'}</p></div>
+        <p class="small muted">Mejor serie: ${setTxt(bestOf(last.sets, wt))} · ${fmtDay(last.date)} · ${h.length} ${h.length === 1 ? 'sesión' : 'sesiones'}</p></div>
         <div class="stack" style="gap:2px;align-items:flex-end">${spark(vals)}${ch ? `<span class="small num" style="color:${ch > 0 ? 'var(--ok)' : 'var(--warn)'}">${ch > 0 ? '+' : ''}${fmt(ch, 0)} %</span>` : ''}</div></button>`; }).join('')}</section>`;
 }
 function exDetail(k) {
   const h = exHistory(k); if (!h.length) { UI.exDetail = null; return bodyProgress(); }
-  const vals = h.slice(0, 20).reverse(), allSets = h.flatMap(x => x.sets), best = bestOf(allSets), topKg = Math.max(...allSets.map(s => s.kg));
-  const W = 320, H = 150, L = 34, R = 10, T = 12, B = 24, ms = vals.map(x => metric(x.sets)), lo = Math.floor(Math.min(...ms) * 0.95), hi = Math.ceil(Math.max(...ms) * 1.05) || 1;
+  const wt = isWeighted(h), vals = h.slice(0, 20).reverse(), allSets = h.flatMap(x => x.sets), best = bestOf(allSets, wt), topKg = Math.max(...allSets.map(s => s.kg));
+  const W = 320, H = 150, L = 34, R = 10, T = 12, B = 24, ms = vals.map(x => metric(x.sets, wt)), lo = Math.floor(Math.min(...ms) * 0.95), hi = Math.max(lo + 1, Math.ceil(Math.max(...ms) * 1.05));
   const x = i => L + (vals.length > 1 ? i * (W - L - R) / (vals.length - 1) : (W - L - R) / 2), y = v => T + (hi - v) * (H - T - B) / ((hi - lo) || 1);
   const chart = vals.length > 1 ? `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Evolución">
-    ${[lo, (lo + hi) / 2, hi].map(t => `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)"/><text x="${L - 6}" y="${y(t) + 4}" text-anchor="end" font-size="10" fill="var(--muted)">${fmt(t)}</text>`).join('')}
+    ${[lo, (lo + hi) / 2, hi].map(t => `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)"/><text x="${L - 6}" y="${y(t) + 4}" text-anchor="end" font-size="10" fill="var(--muted)">${fmt(t, t % 1 ? 1 : 0)}</text>`).join('')}
     <path d="${ms.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('')}" fill="none" stroke="var(--pink)" stroke-width="2.5" stroke-linejoin="round"/>
     ${ms.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="var(--pink)"/>`).join('')}
     <text x="${x(0)}" y="${H - 6}" font-size="10" fill="var(--muted)">${fmtDay(vals[0].date)}</text><text x="${x(vals.length - 1)}" y="${H - 6}" text-anchor="end" font-size="10" fill="var(--muted)">${fmtDay(vals[vals.length - 1].date)}</text></svg>` : '<p class="small muted">Con dos sesiones verás la línea.</p>';
   return `<button class="link" data-a="exback">← Progreso</button>
   <section class="card"><h2>${esc(exName(h[0].e))}</h2>
-    <div class="grid2"><div><p class="stat">${e1rm(best) ? fmt(e1rm(best)) : setTxt(best)}<small>${e1rm(best) ? 'kg 1RM est.' : ''}</small></p><p class="small muted">mejor marca (${setTxt(best)})</p></div>
+    <div class="grid2"><div><p class="stat">${wt ? fmt(e1rm(best)) : best.reps}<small>${wt ? 'kg 1RM est.' : 'reps'}</small></p><p class="small muted">mejor marca (${setTxt(best)})</p></div>
       <div><p class="stat">${topKg ? kgTxt(topKg) : '—'}<small>${topKg ? 'kg' : ''}</small></p><p class="small muted">peso máximo usado</p></div></div>
-    ${chart}<p class="small muted">1RM estimado con la fórmula de Epley a partir de tu mejor serie de cada día (solo series de hasta 15 repeticiones).</p></section>
+    ${chart}<p class="small muted">${wt ? '1RM estimado con la fórmula de Epley a partir de tu mejor serie de cada día (las series de más de 15 repeticiones cuentan como 15).' : 'Repeticiones de tu mejor serie de cada día.'}</p></section>
   <section class="card"><h3>Sesiones</h3><div class="scroll-x"><table><thead><tr><th>Fecha</th><th style="text-align:left">Series</th><th>Volumen</th></tr></thead><tbody>
     ${h.map(s => `<tr><td>${fmtDay(s.date)}</td><td style="text-align:left;white-space:normal">${s.sets.map(setTxt).join(' · ')}</td><td>${fmt(s.sets.reduce((a, z) => a + z.kg * z.reps, 0))}</td></tr>`).join('')}</tbody></table></div></section>`;
 }
@@ -1466,14 +1486,15 @@ const HEVY_RULES = [
   [/treadmill|cinta|bike|bici|cycling|elliptical|el[ií]ptica|stair|escaler|escaladora|walk|camin|run|carrera|row(ing)? machine|cardio|hyrox|ski ?erg|assault/i, {}],
 ];
 const HEVY_TO_EX = [ // ejercicios de Hevy que son los mismos del plan: así su progresión se ve junta
-  [/side plank|plancha lateral/i, null], [/hip thrust.*(machine|m[aá]quina)|glute drive/i, 'hipthrust'], [/hip thrust|glute bridge|empuje de cadera/i, 'hipbarra'],
-  [/romanian|\brdl\b|rumano/i, 'rdl'], [/bulgarian|b[uú]lgara/i, 'bulgara'], [/leg curl|curl femoral/i, 'femoral'], [/hip abduct|abducci[oó]n|abductora/i, 'abduccion'],
+  [/side plank|plancha lateral/i, null], [/single.?leg|one.?leg|unilateral|una pierna/i, null], [/bodyweight|peso corporal/i, null], [/smith|multipower/i, null], [/glute bridge|puente de gl[uú]teo/i, null],
+  [/hip thrust.*(machine|m[aá]quina)|glute drive/i, 'hipthrust'], [/hip thrust|empuje de cadera/i, 'hipbarra'],
+  [/romanian|\brdl\b|rumano/i, 'rdl'], [/bulgarian|b[uú]lgara/i, 'bulgara'], [/leg curl|curl femoral|curl de pierna|curl de isquio/i, 'femoral'], [/hip abduct|abducci[oó]n|abductora/i, 'abduccion'],
   [/glute kickback|patada de gl[uú]teo|cable kickback/i, 'patada'], [/back extension|hyperextension|hiperextensi/i, 'hiper'], [/leg press|prensa/i, 'prensa'],
-  [/lat pulldown|jal[oó]n al pecho/i, 'jalon'], [/incline.*(dumbbell|db).*press|press inclinado/i, 'pressincl'], [/chest supported|seal row|remo con apoyo/i, 'remoapoyo'],
-  [/seated (cable )?row|cable row|remo sentado/i, 'remo'], [/(dumbbell|db).*shoulder press|press de hombro/i, 'presshombro'], [/lateral raise|elevaciones laterales/i, 'laterales'],
+  [/lat pulldown|jal[oó]n al pecho/i, 'jalon'], [/incline.*press.*(dumbbell|db)|(dumbbell|db).*incline.*press|press (de banca )?inclinado.*mancuerna/i, 'pressincl'], [/chest supported|seal row|remo con apoyo/i, 'remoapoyo'],
+  [/seated (cable )?row|cable row|remo sentado|remo en polea/i, 'remo'], [/shoulder press.*(dumbbell|db)|(dumbbell|db).*shoulder press|press de hombros?.*mancuerna/i, 'presshombro'], [/lateral raise|elevaci[oó]n(es)? laterales?/i, 'laterales'],
   [/face pull/i, 'facepull'], [/chest press|press de pecho/i, 'presspecho'], [/pallof/i, 'pallof'], [/dead ?bug/i, 'deadbug'], [/farmer|granjero/i, 'granjero'],
-  [/\bplank|plancha/i, 'plancha'], [/goblet|sumo squat/i, 'goblet'], [/step.?up/i, 'stepup'], [/leg extension|extensi[oó]n de cu[aá]driceps/i, 'extcuad'],
-  [/bicep curl|curl de b[ií]ceps/i, 'curl'], [/tricep(s)? pushdown|extensi[oó]n de tr[ií]ceps/i, 'triceps'], [/calf raise|gemelo/i, 'gemelo'], [/treadmill|cinta/i, 'cinta'],
+  [/\bplank|plancha/i, 'plancha'], [/goblet|sumo squat|sentadilla sumo/i, 'goblet'], [/step.?up/i, 'stepup'], [/leg extension|extensi[oó]n de (cu[aá]driceps|pierna)/i, 'extcuad'],
+  [/bicep curl|curl de b[ií]ceps/i, 'curl'], [/tricep(s)? pushdown|extensi[oó]n de tr[ií]ceps/i, 'triceps'], [/calf raise|gemelo|elevaci[oó]n de talones/i, 'gemelo'], [/treadmill|cinta/i, 'cinta'],
 ];
 const hevyToEx = name => { for (const [re, id] of HEVY_TO_EX) if (re.test(name)) return id; return null; };
 const hevyMuscles = name => { for (const [re, m] of HEVY_RULES) if (re.test(name)) return m; return {}; };
@@ -1500,27 +1521,37 @@ function hevyDate(s) { // "10 Oct 2026, 18:05", "2026-10-10 18:05:00", "2026-10-
   return null;
 }
 function hashId(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+const UNIT_OF = { cinta: 'min', granjero: 'm', plancha: 'seg' }; // ejercicios del plan que no se miden en repeticiones
+function hevyAmount(exId, reps, secs, meters) { // pasa lo de Hevy a la unidad del plan
+  const u = UNIT_OF[exId];
+  if (u === 'min') return Math.round(secs / 60) || reps;
+  if (u === 'm') return Math.round(meters) || reps;
+  if (u === 'seg') return Math.round(secs) || reps;
+  return Math.round(reps || secs || meters);
+}
 function importHevyCSV(text) {
-  const rows = parseCSV(text.replace(/^﻿/, '')); if (rows.length < 2) return { ok: false, msg: 'El archivo está vacío' };
+  const rows = parseCSV(text.replace(/^\uFEFF/, '')); if (rows.length < 2) return { ok: false, msg: 'El archivo está vacío' };
   const head = rows[0].map(h => h.trim().toLowerCase()), col = n => head.indexOf(n);
   const iT = col('title'), iS = col('start_time'), iE = col('exercise_title'), iST = col('set_type'), iR = col('reps'), iDur = col('duration_seconds');
   const iKg = col('weight_kg') >= 0 ? col('weight_kg') : col('weight_lbs'), lbs = col('weight_kg') < 0 && col('weight_lbs') >= 0;
+  const iDist = col('distance_km') >= 0 ? col('distance_km') : col('distance_miles'), miles = col('distance_km') < 0 && col('distance_miles') >= 0;
   const numCell = (r, i) => { if (i < 0) return 0; const v = parseFloat(String(r[i] || '').replace(',', '.')); return Number.isFinite(v) ? v : 0; };
   if (iS < 0 || iE < 0) return { ok: false, msg: 'No parece una exportación de entrenos de Hevy (faltan start_time o exercise_title)' };
   const W = new Map();
   for (const r of rows.slice(1)) {
     const start = r[iS], date = hevyDate(start); if (!date) continue;
     const title = (iT >= 0 ? r[iT] : '') || 'Entreno de Hevy', key = start + '|' + title;
-    if (!W.has(key)) W.set(key, { id: 'hevy-' + hashId(key), date, name: title.slice(0, 80), src: 'hevy', ex: new Map() });
-    const ex = (r[iE] || '').trim().slice(0, 80); if (!ex) continue;
-    const reps = Math.round(numCell(r, iR) || numCell(r, iDur)); if (!reps) continue;
-    const w = W.get(key); if (!w.ex.has(ex)) w.ex.set(ex, []);
-    w.ex.get(ex).push({ kg: Math.round(numCell(r, iKg) / (lbs ? 2.20462 : 1) * 10) / 10, reps, warm: iST >= 0 && /warm/i.test(r[iST] || '') });
+    if (!W.has(key)) W.set(key, { id: 'hevy-' + hashId(key), date, name: title.slice(0, 80), ex: new Map() });
+    const name = (r[iE] || '').trim().slice(0, 80); if (!name) continue;
+    const exId = hevyToEx(name), id = exId || 'hv-' + hashId(name.toLowerCase());
+    const amount = hevyAmount(exId, numCell(r, iR), numCell(r, iDur), numCell(r, iDist) * (miles ? 1609.34 : 1000)); if (!amount) continue;
+    const w = W.get(key); if (!w.ex.has(id)) w.ex.set(id, { id, ...(exId ? {} : { n: name, m: hevyMuscles(name) }), log: [] });
+    w.ex.get(id).log.push({ kg: Math.round(numCell(r, iKg) / (lbs ? 2.20462 : 1) * 10) / 10, reps: amount, warm: iST >= 0 && /warm/i.test(r[iST] || '') });
   }
+  if (!W.size) return { ok: false, msg: 'No he reconocido ninguna fecha en el archivo. ¿Es la exportación de entrenos de Hevy?' };
   let added = 0, updated = 0;
   for (const w of W.values()) {
-    const wo = { id: w.id, date: w.date, name: w.name, src: 'hevy', ex: [...w.ex].map(([n, log]) => { const exId = hevyToEx(n), lg = log.slice(0, 30), sets = lg.filter(x => !x.warm).length;
-      return exId ? { id: exId, sets, log: lg } : { id: 'hv-' + hashId(n.toLowerCase()), n, m: hevyMuscles(n), sets, log: lg }; }).filter(e => e.sets > 0) };
+    const wo = { id: w.id, date: w.date, name: w.name, src: 'hevy', ex: [...w.ex.values()].map(e => { const log = e.log.slice(0, 30); return { ...e, sets: log.filter(x => !x.warm).length, log }; }).filter(e => e.sets > 0) };
     if (!wo.ex.length) continue;
     const i = S.workouts.findIndex(x => x.id === wo.id); if (i >= 0) { S.workouts[i] = wo; updated++; } else { S.workouts.push(wo); added++; }
   }
@@ -2164,6 +2195,7 @@ function merge3(b, l, r) {
       }
       return out;
     }
+    if ([...l, ...r].some(x => x !== null && typeof x === 'object')) return l; // listas de objetos sin id (p. ej. series): gana el último cambio de aquí, sin juntar duplicados
     const bs = new Set(ba.map(J)), ls = new Set(l.map(J)), rs = new Set(r.map(J));
     const gone = new Set([...bs].filter(x => !ls.has(x) || !rs.has(x)));
     const out = [], seen = new Set();
@@ -2450,6 +2482,7 @@ function toast(msg) { clearTimeout(toastT); const t = document.createElement('di
 function render() {
   const keep = {}; // lo que estás escribiendo y aún no has guardado sobrevive al repintado
   document.querySelectorAll('#root input[id], #root textarea[id], #root select[id], #layer input[id], #layer textarea[id], #layer select[id]').forEach(el => {
+    if (el.dataset.lg) return; // el registro del entreno se pinta desde el borrador
     if (el.type === 'checkbox') { if (el.checked !== el.defaultChecked) keep[el.id] = { checked: el.checked }; }
     else if (el.tagName === 'SELECT') { if ([...el.options].some(o => o.selected !== o.defaultSelected)) keep[el.id] = { value: el.value }; }
     else if (el.value !== el.defaultValue) keep[el.id] = { value: el.value };
@@ -2529,7 +2562,9 @@ document.addEventListener('click', e => {
   if (a === 'task') { const p = S.projects.find(x => x.id === d.p); const t = p.tasks.find(x => x.id === d.id); t.done = !t.done; return commit(); }
   if (a === 'delw') { UI.confirmDel = 'w-' + d.id; return render(); }
   if (a === 'delwok') { S.workouts = S.workouts.filter(w => w.id !== d.id); UI.confirmDel = null; return commit('Entreno borrado'); }
-  if (a === 'startlog') { if (DRAFT && !DRAFT.id && UI.body !== 'log') { UI.tab = 'cuerpo'; UI.body = 'log'; window.scrollTo(0, 0); return render(); } return startLog(d.plan || null, null); }
+  if (a === 'startlog') { if (d.resume && DRAFT) { UI.tab = 'cuerpo'; UI.body = 'log'; window.scrollTo(0, 0); return render(); } return startLog(d.plan || null, null); }
+  if (a === 'lgkeep') { UI.switchTo = null; return render(); }
+  if (a === 'lgswitch') { const t = UI.switchTo; UI.switchTo = null; if (t) return startLog(t.planId, t.editId, true); return render(); }
   if (a === 'editw') return startLog(null, d.id);
   if (DRAFT && a.startsWith('lg')) {
     const e = DRAFT.ex[+d.i], st = e && e.log[+d.j];

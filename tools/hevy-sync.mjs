@@ -16,14 +16,15 @@ const out = opt('--out');
 const emit = obj => { const txt = JSON.stringify(obj, null, 1); if (out) writeFileSync(out, txt); else process.stdout.write(txt + '\n'); };
 
 const HEVY_TO_EX = [
-  [/side plank|plancha lateral/i, null], [/hip thrust.*(machine|m[aá]quina)|glute drive/i, 'hipthrust'], [/hip thrust|glute bridge|empuje de cadera/i, 'hipbarra'],
-  [/romanian|\brdl\b|rumano/i, 'rdl'], [/bulgarian|b[uú]lgara/i, 'bulgara'], [/leg curl|curl femoral/i, 'femoral'], [/hip abduct|abducci[oó]n|abductora/i, 'abduccion'],
+  [/side plank|plancha lateral/i, null], [/single.?leg|one.?leg|unilateral|una pierna/i, null], [/bodyweight|peso corporal/i, null], [/smith|multipower/i, null], [/glute bridge|puente de gl[uú]teo/i, null],
+  [/hip thrust.*(machine|m[aá]quina)|glute drive/i, 'hipthrust'], [/hip thrust|empuje de cadera/i, 'hipbarra'],
+  [/romanian|\brdl\b|rumano/i, 'rdl'], [/bulgarian|b[uú]lgara/i, 'bulgara'], [/leg curl|curl femoral|curl de pierna|curl de isquio/i, 'femoral'], [/hip abduct|abducci[oó]n|abductora/i, 'abduccion'],
   [/glute kickback|patada de gl[uú]teo|cable kickback/i, 'patada'], [/back extension|hyperextension|hiperextensi/i, 'hiper'], [/leg press|prensa/i, 'prensa'],
-  [/lat pulldown|jal[oó]n al pecho/i, 'jalon'], [/incline.*(dumbbell|db).*press|press inclinado/i, 'pressincl'], [/chest supported|seal row|remo con apoyo/i, 'remoapoyo'],
-  [/seated (cable )?row|cable row|remo sentado/i, 'remo'], [/(dumbbell|db).*shoulder press|press de hombro/i, 'presshombro'], [/lateral raise|elevaciones laterales/i, 'laterales'],
+  [/lat pulldown|jal[oó]n al pecho/i, 'jalon'], [/incline.*press.*(dumbbell|db)|(dumbbell|db).*incline.*press|press (de banca )?inclinado.*mancuerna/i, 'pressincl'], [/chest supported|seal row|remo con apoyo/i, 'remoapoyo'],
+  [/seated (cable )?row|cable row|remo sentado|remo en polea/i, 'remo'], [/shoulder press.*(dumbbell|db)|(dumbbell|db).*shoulder press|press de hombros?.*mancuerna/i, 'presshombro'], [/lateral raise|elevaci[oó]n(es)? laterales?/i, 'laterales'],
   [/face pull/i, 'facepull'], [/chest press|press de pecho/i, 'presspecho'], [/pallof/i, 'pallof'], [/dead ?bug/i, 'deadbug'], [/farmer|granjero/i, 'granjero'],
-  [/\bplank|plancha/i, 'plancha'], [/goblet|sumo squat/i, 'goblet'], [/step.?up/i, 'stepup'], [/leg extension|extensi[oó]n de cu[aá]driceps/i, 'extcuad'],
-  [/bicep curl|curl de b[ií]ceps/i, 'curl'], [/tricep(s)? pushdown|extensi[oó]n de tr[ií]ceps/i, 'triceps'], [/calf raise|gemelo/i, 'gemelo'], [/treadmill|cinta/i, 'cinta'],
+  [/\bplank|plancha/i, 'plancha'], [/goblet|sumo squat|sentadilla sumo/i, 'goblet'], [/step.?up/i, 'stepup'], [/leg extension|extensi[oó]n de (cu[aá]driceps|pierna)/i, 'extcuad'],
+  [/bicep curl|curl de b[ií]ceps/i, 'curl'], [/tricep(s)? pushdown|extensi[oó]n de tr[ií]ceps/i, 'triceps'], [/calf raise|gemelo|elevaci[oó]n de talones/i, 'gemelo'], [/treadmill|cinta/i, 'cinta'],
 ];
 const hevyToEx = name => { for (const [re, id] of HEVY_TO_EX) if (re.test(name)) return id; return null; };
 const hashId = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
@@ -31,17 +32,28 @@ const MUSCLE = { glutes: 'gluteos', abductors: 'gluteos', hamstrings: 'isquios',
   upper_back: 'espalda', traps: 'trapecio', shoulders: 'hombros', chest: 'pecho', biceps: 'biceps', triceps: 'triceps', abdominals: 'abdomen', lower_back: 'lumbar' };
 const localDate = iso => new Intl.DateTimeFormat('sv-SE', { timeZone: process.env.TZ_VALMON || 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
 
+const UNIT_OF = { cinta: 'min', granjero: 'm', plancha: 'seg' }; // igual que en la app
+function amount(exId, s) {
+  const reps = s.reps || 0, secs = s.duration_seconds || 0, meters = s.distance_meters || 0, u = UNIT_OF[exId];
+  if (u === 'min') return Math.round(secs / 60) || reps;
+  if (u === 'm') return Math.round(meters) || reps;
+  if (u === 'seg') return Math.round(secs) || reps;
+  return Math.round(reps || secs || meters);
+}
 function convert(w, templates) {
-  const ex = [];
+  const byId = new Map();
   for (const e of w.exercises || []) {
-    const log = (e.sets || []).map(s => ({ kg: Math.round((s.weight_kg || 0) * 10) / 10, reps: Math.round(s.reps || s.duration_seconds || 0), warm: s.type === 'warmup' })).filter(s => s.reps > 0).slice(0, 30);
-    const sets = log.filter(s => !s.warm).length; if (!sets) continue;
-    const title = String(e.title || 'Ejercicio').slice(0, 80), id = hevyToEx(title);
-    if (id) { ex.push({ id, sets, log }); continue; }
-    const t = templates.get(e.exercise_template_id), m = {};
-    if (t) { for (const g of t.secondary_muscle_groups || []) if (MUSCLE[g]) m[MUSCLE[g]] = Math.max(m[MUSCLE[g]] || 0, 0.5); if (MUSCLE[t.primary_muscle_group]) m[MUSCLE[t.primary_muscle_group]] = 1; }
-    ex.push({ id: 'hv-' + hashId(title.toLowerCase()), n: title, m, sets, log });
+    const title = String(e.title || 'Ejercicio').slice(0, 80), exId = hevyToEx(title), id = exId || 'hv-' + hashId(title.toLowerCase());
+    const log = (e.sets || []).map(s => ({ kg: Math.round((s.weight_kg || 0) * 10) / 10, reps: amount(exId, s), warm: s.type === 'warmup' })).filter(s => s.reps > 0);
+    if (!log.length) continue;
+    if (!byId.has(id)) {
+      const m = {}, t = templates.get(e.exercise_template_id);
+      if (!exId && t) { for (const g of t.secondary_muscle_groups || []) if (MUSCLE[g]) m[MUSCLE[g]] = Math.max(m[MUSCLE[g]] || 0, 0.5); if (MUSCLE[t.primary_muscle_group]) m[MUSCLE[t.primary_muscle_group]] = 1; }
+      byId.set(id, exId ? { id, log: [] } : { id, n: title, m, log: [] });
+    }
+    byId.get(id).log.push(...log);
   }
+  const ex = [...byId.values()].map(e => { const log = e.log.slice(0, 30); return { ...e, sets: log.filter(s => !s.warm).length, log }; }).filter(e => e.sets > 0);
   return { id: 'hevy-' + w.id, date: localDate(w.start_time), name: String(w.title || 'Entreno de Hevy').slice(0, 80), src: 'hevy', ex };
 }
 
