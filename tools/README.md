@@ -4,6 +4,8 @@
 
 Trae los entrenos de Hevy (con kg, repeticiones y calentamientos) a la app. Usa la API v1 de Hevy, que **solo funciona con Hevy Pro**.
 
+Respeta lo que haces en la app: un entreno de Hevy que corriges allí no se pisa ni se borra, uno que borras allí no vuelve (aunque Hevy lo mande con otro id), y un entreno que ya habías importado por CSV se sustituye por el de la API en lugar de duplicarse.
+
 ### Qué hace falta (una vez)
 1. Clave de la API: créala en https://hevy.com/settings?developer.
 2. En los ajustes del entorno de Claude Code de este repositorio:
