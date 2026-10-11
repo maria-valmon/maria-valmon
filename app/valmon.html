@@ -1629,8 +1629,8 @@ const normMaq = x => String(x || '').trim().toLowerCase();
 const nowHM = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 const recentFirst = () => S.workouts.map((w, i) => ({ w, i })).sort((a, b) => b.w.date.localeCompare(a.w.date) || String(b.w.time || '').localeCompare(String(a.w.time || '')) || b.i - a.i).map(x => x.w);
 function lastPrefs(id) { // «por lado» de la última vez que hiciste ese ejercicio y la última máquina que apuntaste
-  const es = recentFirst().flatMap(w => w.ex.filter(e => e.id === id)), withMaq = es.find(e => e.maq);
-  return { maq: (withMaq && withMaq.maq) || '', x2: !!(es[0] && es[0].x2) };
+  const ws = recentFirst(), es = ws.flatMap(w => w.ex.filter(e => e.id === id)), withMaq = es.find(e => e.maq), inApp = ws.filter(w => w.src !== 'hevy').flatMap(w => w.ex.filter(e => e.id === id))[0];
+  return { maq: (withMaq && withMaq.maq) || '', x2: !!(inApp && inApp.x2) };
 }
 function machinesFor(id) { const out = []; for (const w of recentFirst()) for (const e of w.ex) if (e.id === id && e.maq && !out.some(m => normMaq(m) === normMaq(e.maq))) out.push(e.maq); return out.slice(0, 8); }
 function altsFor(e, taken) { // las elegidas a mano primero; después, las que más se parecen en músculos trabajados
@@ -1643,6 +1643,7 @@ function exHistory(key, opt = {}) { // una entrada por día (se juntan las serie
     .sort((a, b) => b.w.date.localeCompare(a.w.date) || b.i - a.i);
   const byDay = new Map();
   const m = normMaq(opt.maq); // con máquina: solo las veces en esa máquina (si no hay ninguna, todas)
+  if (opt.x2 !== undefined && !opt.anyX2) { const same = exHistory(key, { ...opt, anyX2: true }).filter(h => !!h.e.x2 === !!opt.x2); if (same.length) return same; } // mismo modo (×2 o no), si lo hay
   for (const { w } of ws) for (const e of w.ex) if (exKey(e) === key && workingSets(e).length && (!m || normMaq(e.maq) === m)) {
     if (!byDay.has(w.date)) byDay.set(w.date, { date: w.date, wid: w.id, sets: [], e });
     byDay.get(w.date).sets.push(...workingSets(e));
@@ -1660,7 +1661,8 @@ function suggest(key, sc, opt) { // doble progresión: si todas las series del p
   const atTop = h.sets.filter(s => s.kg === top);
   if (p.unit !== 'reps' || !top) return { kg: top || 0, reps: Math.min(p.hi, Math.max(...h.sets.map(s => s.reps)) + (p.unit === 'reps' ? 1 : 0)), up: false, last: h };
   const done = atTop.length >= p.sets && atTop.every(s => s.reps >= p.hi);
-  if (done) { const inc = top >= 40 ? 2.5 : 1; return { kg: Math.round((top + inc) * 2) / 2, reps: p.lo, up: true, last: h }; }
+  if (done) { if (opt && opt.x2) return { kg: (Math.round(top / 2 / 1.25) * 1.25 + 1.25) * 2, reps: p.lo, up: true, last: h }; // por lado: un disco de 1,25 más a cada lado
+    const inc = top >= 40 ? 2.5 : 1; return { kg: Math.round((top + inc) * 2) / 2, reps: p.lo, up: true, last: h }; }
   return { kg: top, reps: Math.min(p.hi, Math.min(...atTop.map(s => s.reps)) + 1), up: false, last: h };
 }
 /* Borrador del entreno en curso: se guarda en este dispositivo para no perderlo si cierras la app */
@@ -1685,7 +1687,7 @@ function startLog(planId, editId, force) {
     DRAFT.orig = workoutKey(w); // cómo estaba al abrirlo: si se guarda sin cambios no se toca (ni se marca como corregido)
   } else {
     const p = PLAN.find(x => x.id === planId);
-    DRAFT = { id: null, date: today(), name: p ? p.name : 'Entreno libre', planId: p ? p.id : null, started: new Date().toISOString(), time: nowHM(), dur: '',
+    DRAFT = { id: null, date: today(), name: p ? p.name : 'Entreno libre', planId: p ? p.id : null, started: new Date().toISOString(), time: nowHM(), time0: nowHM(), dur: '',
       ex: p ? p.ex.map(([id, sc]) => ({ id, sc, ...lastPrefs(id), log: Array.from({ length: parseScheme(sc).sets }, () => ({ kg: '', reps: '', warm: false, done: false })) })) : [] };
   }
   keepDraft(); UI.tab = 'cuerpo'; UI.body = 'log'; UI.rest = null; window.scrollTo(0, 0); render();
@@ -1704,14 +1706,13 @@ function viewLog() {
     <div class="row wrap" style="gap:10px;align-items:flex-end;flex-wrap:nowrap">
       <label class="f" style="flex:1.4;min-width:0">Fecha<input type="date" id="lg-date" data-lg="date" value="${D.date}"></label>
       <label class="f" style="flex:1;min-width:0">Hora<input type="time" id="lg-time" data-lg="time" value="${esc(D.time || '')}"></label>
-      <label class="f" style="flex:1;min-width:0">Minutos<input type="number" inputmode="numeric" min="1" max="600" id="lg-dur" data-lg="dur" value="${D.dur === '' || D.dur == null ? '' : D.dur}" placeholder="${!D.id && D.started && D.date === today() ? Math.max(1, Math.round((Date.now() - Date.parse(D.started)) / 60000)) : ''}"></label></div>
-    ${!D.id && D.started && (D.dur === '' || D.dur == null) ? '<p class="small muted">Si dejas la duración vacía, se calcula sola al guardar.</p>' : ''}
+      <label class="f" style="flex:1;min-width:0">Minutos<input type="number" inputmode="numeric" min="1" max="600" id="lg-dur" data-lg="dur" value="${D.dur === '' || D.dur == null ? '' : D.dur}" placeholder="${autoDur(D) ? Math.max(1, autoDur(D)) : ''}"></label></div>
+    ${autoDur(D) && (D.dur === '' || D.dur == null) ? '<p class="small muted">Si dejas los minutos vacíos, se calculan solos al guardar.</p>' : ''}
   </section>
-  ${D.ex.map((e, i) => { const x = EX[e.id] || {}, p = parseScheme(e.sc), sg = suggest(exKey(e), e.sc, { excludeWid: D.id, upTo: D.date, maq: e.maq }), unit = UNIT_LABEL[p.unit], k = i + '-' + e.id;
-    const sgKg = v => kgTxt(e.x2 ? v / 2 : v) + (e.x2 ? ' kg/lado' : ' kg'), alts = UI.swapOpen === k ? altsFor(e, new Set(D.ex.map(z => z.id))) : [];
+  ${D.ex.map((e, i) => { const x = EX[e.id] || {}, p = parseScheme(e.sc), sg = sgFor(e), unit = UNIT_LABEL[p.unit], k = i + '-' + e.id;
+    const alts = UI.swapOpen === k ? altsFor(e, new Set(D.ex.map(z => z.id))) : [];
     return `<section class="card logex"><div class="row between" style="align-items:flex-start"><div class="grow"><h3>${esc(e.n || x.n || e.id)}</h3>
-        <p class="small muted">${e.sc ? `Objetivo ${esc(e.sc)}` : ''}${sg ? `${e.sc ? ' · ' : ''}Última vez: ${sg.last.sets.map(z => setTxtX(z, e.x2)).join(', ')}${sg.last.e.maq ? ` (${esc(sg.last.e.maq)})` : ''}` : ''}</p>
-        ${sg ? `<p class="small" style="color:${sg.up ? 'var(--ok)' : 'var(--pink-soft)'}">${sg.up ? `¡Toca subir! Prueba ${sgKg(sg.kg)} × ${sg.reps}` : sg.kg ? `Hoy: ${sgKg(sg.kg)}, intenta ${sg.reps} ${unit}` : `Hoy: intenta ${sg.reps} ${unit}`}</p>` : ''}</div>
+        <div id="lg-${i}-info">${exInfo(e, sg, unit)}</div></div>
         <div class="row" style="gap:6px;flex-shrink:0"><button class="btn sm quiet" data-a="lgswap" data-i="${i}" aria-expanded="${UI.swapOpen === k}" title="Si la máquina está ocupada">⇄ Cambiar</button>
         ${UI.confirmDel === 'ex-' + k ? `<button class="link" data-a="lgdelexok" data-i="${i}">Quitar</button><button class="link" data-a="nodel">No</button>` : `<button class="x" data-a="lgdelex" data-i="${i}" aria-label="Quitar ejercicio">×</button>`}</div></div>
       ${UI.swapOpen === k ? `<div class="stack" style="gap:6px;margin:8px 0"><p class="small muted">¿Máquina ocupada? Cámbialo por${e.log.some(z => z.done) ? ' (las series que ya has hecho se quedan en este)' : ''}:</p>
@@ -1720,11 +1721,11 @@ function viewLog() {
       <div class="row wrap" style="gap:8px;align-items:flex-end;margin:6px 0">
         <label class="f grow" style="min-width:150px;margin:0">Máquina<input id="lg-${i}-maq" data-lg="maq" data-i="${i}" list="maqs-${i}" maxlength="60" value="${esc(e.maq || '')}" placeholder="${esc(x.maq ? 'Ej.: ' + x.maq : 'Cuál usas')}"></label>
         <datalist id="maqs-${i}">${machinesFor(e.id).map(m => `<option value="${esc(m)}"></option>`).join('')}</datalist>
-        <button class="btn sm ${e.x2 ? '' : 'quiet'}" data-a="lgx2" data-i="${i}" aria-pressed="${!!e.x2}" title="Para discos o mancuernas: apuntas el peso de un lado y cuenta el doble">×2 por lado</button></div>
-      ${e.x2 ? '<p class="small muted">Apuntas el peso de un lado; se guarda el doble.</p>' : ''}
+        <button class="btn sm ${e.x2 ? '' : 'quiet'}" data-a="lgx2" data-i="${i}" aria-pressed="${!!e.x2}" title="Para barras y máquinas de discos: apuntas los discos de un lado y cuenta el doble. Las mancuernas se apuntan por mancuerna.">×2 por lado</button></div>
+      ${e.x2 ? '<p class="small muted">Apuntas los discos de un lado; se guarda el doble. (Las mancuernas se apuntan por mancuerna, sin ×2.)</p>' : ''}
       <div class="sets"><div class="set-row head"><span>Serie</span><span>${e.x2 ? 'kg/lado' : 'kg'}</span><span>${unit}</span><span></span></div>
       ${e.legacy ? `<p class="small muted">Este entreno se guardó sin kg ni repeticiones (${e.legacy} series). Si no rellenas nada, se queda como estaba.</p>` : ''}
-      ${e.log.map((s, j) => { const ph = sg ? { kg: sg.kg ? kgTxt(e.x2 ? sg.kg / 2 : sg.kg) : '', reps: sg.reps } : { kg: '', reps: p.hi };
+      ${e.log.map((s, j) => { const ph = phFor(e, sg, p);
         return `<div class="set-row ${s.done ? 'done' : ''}">
           <button class="setno ${s.warm ? 'warm' : ''}" data-a="lgwarm" data-i="${i}" data-j="${j}" title="Tocar para marcar como calentamiento">${s.warm ? 'C' : j + 1 - e.log.slice(0, j).filter(x => x.warm).length}</button>
           <input type="number" inputmode="decimal" step="any" min="0" id="lg-${i}-${j}-kg" data-lg="kg" data-i="${i}" data-j="${j}" value="${s.kg === '' || s.kg == null ? '' : e.x2 ? Math.round(s.kg / 2 * 100) / 100 : s.kg}" placeholder="${ph.kg}" aria-label="${e.x2 ? 'Kilos por lado' : 'Kilos'} serie ${j + 1}">
@@ -1736,9 +1737,23 @@ function viewLog() {
     ${UI.confirmDel === 'draft' ? '<button class="btn quiet" data-a="lgdiscardok">Sí, descartar</button><button class="link" data-a="nodel">No</button>' : `<button class="btn quiet" data-a="lgdiscard">${D.id ? 'Cancelar' : 'Descartar'}</button>`}</div>
   <p class="small muted">Toca el número de la serie para marcarla como calentamiento (no cuenta). Si dejas kg o reps vacíos y marcas ✓, se usa lo sugerido.</p>`;
 }
+const autoDur = D => !D.id && D.started && D.date === today() && (!D.time0 || D.time === D.time0) ? Math.round((Date.now() - Date.parse(D.started)) / 60000) : 0; // si cambias la hora o la fecha (lo apuntas después), la duración la pones tú
+const sgFor = e => suggest(exKey(e), e.sc, { excludeWid: DRAFT && DRAFT.id, upTo: DRAFT && DRAFT.date, maq: e.maq, x2: e.x2 }); // lo sugerido con la máquina y el «por lado» actuales
+function exInfo(e, sg, unit) { // «Objetivo · Última vez» y lo de hoy (se actualiza solo al cambiar de máquina)
+  const sgKg = v => kgTxt(e.x2 ? v / 2 : v) + (e.x2 ? ' kg/lado' : ' kg');
+  return `<p class="small muted">${e.sc ? `Objetivo ${esc(e.sc)}` : ''}${sg ? `${e.sc ? ' · ' : ''}Última vez: ${sg.last.sets.map(z => setTxtX(z, sg.last.e.x2)).join(', ')}${sg.last.e.maq ? ` (${esc(sg.last.e.maq)})` : ''}` : ''}</p>
+    ${sg ? `<p class="small" style="color:${sg.up ? 'var(--ok)' : 'var(--pink-soft)'}">${sg.up ? `¡Toca subir! Prueba ${sgKg(sg.kg)} × ${sg.reps}` : sg.kg ? `Hoy: ${sgKg(sg.kg)}, intenta ${sg.reps} ${unit}` : `Hoy: intenta ${sg.reps} ${unit}`}</p>` : ''}`;
+}
+const phFor = (e, sg, p) => sg ? { kg: sg.kg ? kgTxt(e.x2 ? sg.kg / 2 : sg.kg) : '', reps: sg.reps } : { kg: '', reps: p.hi };
+function refreshEx(i) { // sin volver a pintar la tarjeta (no se pierde el toque ni el foco)
+  const e = DRAFT && DRAFT.ex[i]; if (!e) return;
+  const p = parseScheme(e.sc), sg = sgFor(e), box = document.getElementById(`lg-${i}-info`), ph = phFor(e, sg, p);
+  if (box) box.innerHTML = exInfo(e, sg, UNIT_LABEL[p.unit]);
+  e.log.forEach((z, j) => { const k = document.getElementById(`lg-${i}-${j}-kg`), r = document.getElementById(`lg-${i}-${j}-r`); if (k) k.placeholder = ph.kg; if (r) r.placeholder = ph.reps; });
+}
 const restLeft = () => { const s = Math.max(0, Math.ceil((UI.rest - Date.now()) / 1000)); return `${Math.floor(s / 60)}:${pad(s % 60)}`; };
 setInterval(() => { if (!UI.rest) return; const el = document.getElementById('rest-t'); if (Date.now() >= UI.rest) { UI.rest = null; const r = document.getElementById('rest'); if (r) r.outerHTML = ''; toast('Descanso terminado'); return; } if (el) el.textContent = restLeft(); }, 500);
-function restFor(e) { const big = ['hipthrust', 'hipbarra', 'rdl', 'prensa', 'bulgara', 'goblet', 'jalon', 'remoapoyo', 'presspecho'].includes(e.id); return big ? 120 : 75; }
+function restFor(e) { const big = ['hipthrust', 'hipbarra', 'hipmulti', 'rdl', 'rdlmanc', 'prensa', 'hack', 'bulgara', 'zancada', 'goblet', 'jalon', 'jalonpolea', 'dominada', 'remoapoyo', 'remomanc', 'presspecho', 'pressmanc'].includes(e.id); return big ? 120 : 75; }
 function saveLog() {
   const D = DRAFT; if (!D) return;
   const ex = D.ex.map(e => {
@@ -1756,7 +1771,7 @@ function saveLog() {
     const prev = prevH.flatMap(h => h.sets), weighted = prev.some(x => x.kg > 0) || ws.some(x => x.kg > 0);
     if (metric(ws, weighted) > metric(prev, weighted) + 0.01 || Math.max(...ws.map(x => x.kg)) > Math.max(...prev.map(x => x.kg))) prs.push(exName(e));
   }
-  const auto = !D.id && D.started && D.date === today() ? Math.round((Date.now() - Date.parse(D.started)) / 60000) : 0; // duración: lo que pongas o, si no, desde que empezaste (si es razonable)
+  const auto = autoDur(D); // duración: lo que pongas o, si no, desde que empezaste (si es razonable)
   const dur = D.dur !== '' && D.dur != null ? +D.dur : auto >= 1 && auto <= 300 ? auto : 0;
   const w = cleanWorkouts([{ id: D.id || uid(), date: D.date, name: (D.name || 'Entreno').slice(0, 80), ...(D.planId ? { planId: D.planId } : {}), ...(D.src ? { src: D.src } : {}), ...(D.time ? { time: D.time } : {}), ...(dur ? { dur } : {}), ex }])[0];
   const i = S.workouts.findIndex(x => x.id === w.id), prev = i >= 0 ? S.workouts[i] : null;
@@ -2641,7 +2656,7 @@ function onRemote(snap) {
       lsSet('.backup', { at: new Date().toISOString(), example: !!S.example, S });
       const rp = docs.find(d => d.id === 'perfil'), remoteExample = rp ? (rp.data() || {}).example : undefined;
       const remote = Object.assign({}, ...docs.map(d => pick(d.data() || {}, d.id)));
-      const localWins = S.example === false && hasData(S) && (remoteExample === true || !hasData(remote)); // solo gana lo de aquí si son datos de verdad y la nube no tiene (o solo tiene el ejemplo)
+      const localWins = S.example === false && hasData(S) && !hasData(remote); void remoteExample; // solo gana lo de aquí si son datos de verdad y la nube no tiene nada apuntado (lo de aquí queda en la copia de seguridad)
       for (const doc of docs) {
         const data = doc.data() || {}, rj = J(pick(data, doc.id));
         BASE[doc.id] = rj;
@@ -2985,7 +3000,7 @@ document.addEventListener('click', e => {
     const e = DRAFT.ex[+d.i], st = e && e.log[+d.j];
     if (a !== 'lgdelex' && a !== 'lgdelexok' && String(UI.confirmDel).startsWith('ex-')) UI.confirmDel = null;
     if (a !== 'lgswap' && a !== 'lgswapto' && a !== 'lgx2') UI.swapOpen = null;
-    if (a === 'lgdone' && st) { if (!st.done) { const ph = document.getElementById(`lg-${d.i}-${d.j}-kg`), pr = document.getElementById(`lg-${d.i}-${d.j}-r`); if (st.kg === '' && ph && ph.placeholder) st.kg = (+ph.placeholder.replace(/\./g, '').replace(',', '.') || 0) * (e.x2 ? 2 : 1) || ''; if (st.reps === '' && pr && pr.placeholder) st.reps = +pr.placeholder || ''; if (!st.reps) { toast('Pon las repeticiones'); return; } st.done = true; if (!st.warm) UI.rest = Date.now() + restFor(e) * 1000; } else st.done = false; }
+    if (a === 'lgdone' && st) { if (!st.done) { const ph = document.getElementById(`lg-${d.i}-${d.j}-kg`), pr = document.getElementById(`lg-${d.i}-${d.j}-r`); const sg = sgFor(e); if (st.kg === '') st.kg = sg && sg.kg ? sg.kg : ''; if (st.reps === '') st.reps = sg ? sg.reps : parseScheme(e.sc).hi; void ph; void pr; if (!st.reps) { toast('Pon las repeticiones'); return; } st.done = true; if (!st.warm) UI.rest = Date.now() + restFor(e) * 1000; } else st.done = false; }
     if (a === 'lgwarm' && st) st.warm = !st.warm;
     if (a === 'lgx2' && e) { e.x2 = !e.x2; e.log.forEach(z => { if (z.kg !== '' && z.kg != null) z.kg = e.x2 ? z.kg * 2 : z.kg / 2; }); } // lo que ves escrito se mantiene: pasa a ser el peso de un lado
     if (a === 'lgswap' && e) { const k = d.i + '-' + e.id; UI.swapOpen = UI.swapOpen === k ? null : k; }
@@ -3026,7 +3041,7 @@ document.addEventListener('input', e => { // lo que escribes en el registro del 
   if (f === 'name') DRAFT.name = el.value; else if (f === 'date') { if (/^\d{4}-\d{2}-\d{2}$/.test(el.value)) DRAFT.date = el.value; }
   else if (f === 'time') DRAFT.time = /^\d{2}:\d{2}$/.test(el.value) ? el.value : '';
   else if (f === 'dur') DRAFT.dur = el.value === '' ? '' : Math.max(0, Math.round(+el.value) || 0);
-  else if (f === 'maq') { const ex = DRAFT.ex[+el.dataset.i]; if (ex) ex.maq = el.value.slice(0, 60); }
+  else if (f === 'maq') { const ex = DRAFT.ex[+el.dataset.i]; if (ex) { ex.maq = el.value.slice(0, 60); refreshEx(+el.dataset.i); } } // «Última vez» y lo sugerido pasan a ser de esa máquina
   else { const ex = DRAFT.ex[+el.dataset.i], st = ex?.log[+el.dataset.j]; if (st) st[f] = el.value === '' ? '' : f === 'kg' && ex.x2 ? +el.value * 2 : +el.value; } // por lado: se guarda el total
   keepDraft();
 });
