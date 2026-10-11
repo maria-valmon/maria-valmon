@@ -33,6 +33,7 @@ const hevySig = w => 'x' + String(w.date).replace(/-/g, '') + '-' + hashId(Strin
 const MUSCLE = { glutes: 'gluteos', abductors: 'gluteos', hamstrings: 'isquios', quadriceps: 'cuadriceps', adductors: 'aductores', calves: 'gemelos', lats: 'espalda',
   upper_back: 'espalda', traps: 'trapecio', shoulders: 'hombros', chest: 'pecho', biceps: 'biceps', triceps: 'triceps', abdominals: 'abdomen', lower_back: 'lumbar' };
 const localDate = iso => new Intl.DateTimeFormat('sv-SE', { timeZone: process.env.TZ_VALMON || 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
+const localTime = iso => new Intl.DateTimeFormat('es-ES', { timeZone: process.env.TZ_VALMON || 'Europe/Madrid', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso)); // 18:05
 
 const UNIT_OF = { cinta: 'min', granjero: 'm', plancha: 'seg' }; // igual que en la app
 function amount(exId, s) {
@@ -56,7 +57,8 @@ function convert(w, templates) {
     byId.get(id).log.push(...log);
   }
   const ex = [...byId.values()].map(e => { const log = e.log.slice(0, 30); return { ...e, sets: log.filter(s => !s.warm).length, log }; }).filter(e => e.sets > 0);
-  return { id: 'hevy-' + w.id, date: localDate(w.start_time), name: String(w.title || 'Entreno de Hevy').slice(0, 80), src: 'hevy', ex };
+  const dur = w.end_time ? Math.round((Date.parse(w.end_time) - Date.parse(w.start_time)) / 60000) : 0; // hora de inicio y duración, como en la app
+  return { id: 'hevy-' + w.id, date: localDate(w.start_time), name: String(w.title || 'Entreno de Hevy').slice(0, 80), src: 'hevy', time: localTime(w.start_time), ...(dur >= 1 && dur <= 600 ? { dur } : {}), ex };
 }
 
 async function fetchMode() {

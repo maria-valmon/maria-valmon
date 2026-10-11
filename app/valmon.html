@@ -246,6 +246,41 @@ const EX = {
   triceps: { n: 'Extensión de tríceps en polea', maq: 'Polea alta con cuerda', alt: 'Fondos en banco', m: { triceps: 1 } },
   plancha: { n: 'Plancha', maq: 'Suelo', alt: 'Dead bug', m: { abdomen: 1, oblicuos: .3 } },
   gemelo: { n: 'Gemelo en máquina', maq: 'Zona de máquinas guiadas', alt: 'Elevación de talones con mancuernas', m: { gemelos: 1 } },
+  // alternativas para cuando la máquina está ocupada (cada una lleva su propio historial)
+  hipmulti: { n: 'Hip thrust en multipower', maq: 'Multipower y banco', alt: 'Hip thrust con barra', m: { gluteos: 1, isquios: .4, cuadriceps: .3, aductores: .3 } },
+  puente: { n: 'Puente de glúteo con barra o mancuerna', maq: 'Suelo o colchoneta, barra o mancuerna', alt: 'Hip thrust con barra', m: { gluteos: 1, isquios: .4 } },
+  pullthrough: { n: 'Pull-through en polea', maq: 'Polea baja con cuerda', alt: 'Hiperextensión 45°', m: { gluteos: 1, isquios: .6 } },
+  rdlmanc: { n: 'Peso muerto rumano con mancuernas', maq: 'Mancuernas', alt: 'Con barra', m: { isquios: 1, gluteos: .6, lumbar: .5, aductores: .3 } },
+  zancada: { n: 'Zancada atrás con mancuernas', maq: 'Mancuernas o multipower', alt: 'Step-up al cajón', m: { gluteos: .9, cuadriceps: .8, aductores: .4 } },
+  femoralpie: { n: 'Curl femoral de pie en polea', maq: 'Polea baja con tobillera', alt: 'Curl femoral en máquina', m: { isquios: 1 } },
+  abdpolea: { n: 'Abducción de pie en polea', maq: 'Polea baja con tobillera', alt: 'Abducción en máquina', m: { gluteos: 1 } },
+  patadapolea: { n: 'Patada de glúteo en polea', maq: 'Polea baja con tobillera', alt: 'Patada en máquina', m: { gluteos: 1, isquios: .3 } },
+  hack: { n: 'Sentadilla hack o péndulo', maq: 'Máquina hack o péndulo', alt: 'Prensa', m: { cuadriceps: 1, gluteos: .6, aductores: .4 } },
+  jalonpolea: { n: 'Jalón en polea alta', maq: 'Polea alta con barra o agarre neutro', alt: 'Jalón en máquina', m: { espalda: 1, biceps: .5, hombros: .3 } },
+  dominada: { n: 'Dominada asistida', maq: 'Máquina de dominadas asistidas o banda', alt: 'Jalón al pecho', m: { espalda: 1, biceps: .6 } },
+  pressinclmulti: { n: 'Press inclinado en multipower', maq: 'Multipower y banco inclinado', alt: 'Con mancuernas', m: { pecho: 1, hombros: .5, triceps: .5 } },
+  pressmanc: { n: 'Press de banca con mancuernas', maq: 'Mancuernas y banco plano', alt: 'Press de pecho en máquina', m: { pecho: 1, triceps: .5, hombros: .4 } },
+  remomanc: { n: 'Remo con mancuerna a una mano', maq: 'Mancuerna y banco', alt: 'Remo en polea', m: { espalda: 1, biceps: .4, trapecio: .4 } },
+  presshombromaq: { n: 'Press de hombro en máquina o multipower', maq: 'Máquina de press de hombro o multipower', alt: 'Con mancuernas', m: { hombros: 1, triceps: .5, trapecio: .3 } },
+  lateralpolea: { n: 'Elevación lateral en polea', maq: 'Polea baja', alt: 'Con mancuernas', m: { hombros: 1, trapecio: .3 } },
+  pajaros: { n: 'Pájaros con mancuernas', maq: 'Mancuernas ligeras y banco', alt: 'Face pull', m: { hombros: 1, trapecio: .5, espalda: .3 } },
+  planchalat: { n: 'Plancha lateral', maq: 'Suelo', alt: 'Pallof press', m: { oblicuos: 1, abdomen: .5 } },
+  maleta: { n: 'Paseo con una mancuerna (maleta)', maq: 'Una mancuerna pesada', alt: 'Paseo del granjero', m: { oblicuos: 1, trapecio: .6, abdomen: .5 } },
+  escaladora: { n: 'Escaladora o elíptica', maq: 'Escaladora o elíptica', alt: 'Cinta inclinada', m: {} },
+};
+// Si la máquina está ocupada: alternativas para el mismo trabajo, de la más parecida a la menos
+const ALTS = {
+  hipthrust: ['hipbarra', 'hipmulti', 'puente', 'patada'], hipbarra: ['hipthrust', 'hipmulti', 'puente', 'hiper'], hipmulti: ['hipbarra', 'hipthrust', 'puente'], puente: ['hipbarra', 'hipthrust', 'hipmulti'],
+  rdl: ['rdlmanc', 'hiper', 'pullthrough'], rdlmanc: ['rdl', 'hiper', 'pullthrough'], bulgara: ['zancada', 'stepup', 'goblet', 'prensa'], zancada: ['bulgara', 'stepup', 'goblet'], stepup: ['bulgara', 'zancada'],
+  femoral: ['femoralpie', 'rdlmanc', 'hiper'], femoralpie: ['femoral', 'rdlmanc'], abduccion: ['abdpolea', 'patada', 'patadapolea'], abdpolea: ['abduccion', 'patadapolea'],
+  patada: ['patadapolea', 'abduccion', 'hiper'], patadapolea: ['patada', 'abdpolea', 'hiper'], hiper: ['pullthrough', 'rdlmanc', 'puente'], pullthrough: ['hiper', 'rdlmanc', 'puente'],
+  prensa: ['hack', 'goblet', 'bulgara', 'extcuad'], hack: ['prensa', 'goblet'], goblet: ['prensa', 'hack', 'bulgara'], extcuad: ['prensa', 'goblet'],
+  jalon: ['jalonpolea', 'dominada', 'remo'], jalonpolea: ['jalon', 'dominada'], dominada: ['jalon', 'jalonpolea'],
+  pressincl: ['pressinclmulti', 'presspecho', 'pressmanc'], pressinclmulti: ['pressincl', 'presspecho'], presspecho: ['pressmanc', 'pressincl'], pressmanc: ['presspecho', 'pressincl'],
+  remoapoyo: ['remomanc', 'remo', 'jalonpolea'], remo: ['remomanc', 'remoapoyo'], remomanc: ['remo', 'remoapoyo'],
+  presshombro: ['presshombromaq', 'laterales'], presshombromaq: ['presshombro'], laterales: ['lateralpolea', 'presshombro'], lateralpolea: ['laterales'],
+  facepull: ['pajaros', 'remoapoyo'], pajaros: ['facepull'], pallof: ['planchalat', 'deadbug'], planchalat: ['pallof', 'plancha'], deadbug: ['plancha', 'pallof'], plancha: ['deadbug', 'planchalat'],
+  granjero: ['maleta'], maleta: ['granjero'], cinta: ['escaladora'], escaladora: ['cinta'], curl: [], triceps: [], gemelo: [],
 };
 
 const MUSCLES = {
@@ -1229,13 +1264,17 @@ function seed() {
     ],
   };
 }
+function fresh() { // un dispositivo nuevo empieza vacío; lo tuyo llega de la nube
+  const s = seed();
+  return { ...s, example: false, books: [{ ...SEVEN, status: 'leyendo', page: 0 }], active: [], checks: {}, learnings: [], weights: [], measures: [], workouts: [], days: {}, moods: {}, projects: [], rel: [], topics: defaultTopics(false), chat: [], diet: { nextShop: today(), slot: null, lastShop: null, have: [], eaten: {} } };
+}
 function blank() {
   const s = seed();
-  return { ...s, profile: { ...S.profile }, weights: S.weights.length ? S.weights.slice(-1) : s.weights, example: false, books: [{ ...SEVEN, status: 'leyendo', page: 0 }], active: [], checks: {}, learnings: [], measures: [], workouts: [], days: {}, moods: {}, projects: [], rel: [], topics: defaultTopics(), chat: [], diet: { nextShop: today(), slot: null, lastShop: null, have: [], eaten: {} } };
+  return { ...s, profile: { ...S.profile }, weights: S.weights.length ? S.weights.slice(-1) : s.weights, example: false, books: [{ ...SEVEN, status: 'leyendo', page: 0 }], active: [], checks: {}, learnings: [], measures: [], workouts: [], days: {}, moods: {}, projects: [], rel: [], topics: defaultTopics(false), chat: [], diet: { nextShop: today(), slot: null, lastShop: null, have: [], eaten: {} } };
 }
 let S;
-try { S = JSON.parse(localStorage.getItem(KEY)) || seed(); } catch (e) { S = seed(); }
-if (!S || typeof S !== 'object' || Array.isArray(S) || !S.profile || typeof S.profile !== 'object') S = seed();
+try { S = JSON.parse(localStorage.getItem(KEY)) || fresh(); } catch (e) { S = fresh(); }
+if (!S || typeof S !== 'object' || Array.isArray(S) || !S.profile || typeof S.profile !== 'object') S = fresh();
 if (!S.profile.birth) { // v1 → v2: datos reales de María
   S.profile = { ...S.profile, birth: '2003-04-01', height: 169, goalWeight: null };
   delete S.profile.age;
@@ -1259,11 +1298,13 @@ function cleanWorkouts(list) {
   return (Array.isArray(list) ? list : []).filter(w => isP(w) && DATE.test(w.date)).map(w => {
     const csv = w.src === 'hevy' && !HEVY_API_ID.test(String(w.id));
     return { id: typeof w.id === 'string' && ID.test(w.id) ? w.id : uid(), date: w.date, name: str(w.name, 80) || 'Entreno', ...(w.src === 'hevy' ? { src: 'hevy' } : {}), ...(w.edited === true ? { edited: true } : {}),
+      ...(typeof w.time === 'string' && /^\d{2}:\d{2}$/.test(w.time) ? { time: w.time } : {}), ...(num(w.dur, 0) >= 1 ? { dur: Math.min(600, Math.round(num(w.dur, 0))) } : {}),
       ...(typeof w.planId === 'string' && ID.test(w.planId) ? { planId: w.planId } : {}),
       ex: (Array.isArray(w.ex) ? w.ex : []).filter(e => isP(e) && typeof e.id === 'string' && ID.test(e.id)).map(e => {
         const log = (Array.isArray(e.log) ? e.log : []).filter(isP).slice(0, 30).map(x => ({ kg: Math.max(0, Math.min(1000, num(x.kg, 0))), reps: Math.max(0, Math.min(10000, Math.round(num(x.reps, 0)))), ...(x.warm ? { warm: true } : {}) })).filter(x => x.reps > 0);
         const m = e.n && !csv ? musc(e.m) : {};
-        return { id: e.id, sets: log.length ? log.filter(x => !x.warm).length : Math.max(1, Math.min(20, num(e.sets, 1))), ...(log.length ? { log } : {}), ...(e.sc ? { sc: str(e.sc, 40) } : {}), ...(e.n ? { n: str(e.n, 80), ...(Object.keys(m).length ? { m } : {}) } : {}) }; }) };
+        return { id: e.id, sets: log.length ? log.filter(x => !x.warm).length : Math.max(1, Math.min(20, num(e.sets, 1))), ...(log.length ? { log } : {}), ...(e.sc ? { sc: str(e.sc, 40) } : {}), ...(e.n ? { n: str(e.n, 80), ...(Object.keys(m).length ? { m } : {}) } : {}),
+          ...(typeof e.maq === 'string' && e.maq.trim() ? { maq: e.maq.trim().slice(0, 60) } : {}), ...(e.x2 === true ? { x2: true } : {}) }; }) };
   });
 }
 function normalize() { // repara la forma de todos los datos: antiguos, de otro dispositivo o escritos por Claude
@@ -1345,7 +1386,7 @@ function bestStreak(cid) {
   ds.forEach(k => { const d = fromKey(k); cur = prev && (d - prev) / 864e5 === 1 ? cur + 1 : 1; best = Math.max(best, cur); prev = d; });
   return best;
 }
-const lastWeight = () => S.weights.length ? S.weights[S.weights.length - 1].kg : 63;
+const lastWeight = () => S.weights.length ? S.weights[S.weights.length - 1].kg : 67;
 function weeklySets() {
   const from = daysAgo(6), out = {};
   Object.keys(MUSCLES).forEach(k => out[k] = 0);
@@ -1581,16 +1622,32 @@ const exKey = e => e.id; // los ejercicios de Hevy que se reconocen se guardan c
 const workingSets = e => Array.isArray(e.log) && e.log.length ? e.log.filter(s => !s.warm && s.reps > 0) : [];
 const setCount = e => Array.isArray(e.log) && e.log.length ? workingSets(e).length : (e.sets || 0);
 const e1rm = s => s.kg > 0 && s.reps > 0 ? s.kg * (1 + Math.min(s.reps, 15) / 30) : 0; // Epley; por encima de 15 reps cuenta como 15
-const kgTxt = k => fmt(k, k % 1 ? 1 : 0);
+const kgTxt = k => { const r = Math.round(k * 100) / 100; return fmt(r, r % 1 ? (Math.round(r * 10) === r * 10 ? 1 : 2) : 0); }; // 13,75 se ve 13,75 (no 13,8)
 const setTxt = s => s.kg > 0 ? `${kgTxt(s.kg)} kg × ${s.reps}` : `${s.reps}`;
+const setTxtX = (s, x2) => x2 && s.kg > 0 ? `${kgTxt(s.kg / 2)} kg/lado × ${s.reps}` : setTxt(s); // ejercicios de discos o mancuernas: peso de un lado (se guarda el total)
+const normMaq = x => String(x || '').trim().toLowerCase();
+const nowHM = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const recentFirst = () => S.workouts.map((w, i) => ({ w, i })).sort((a, b) => b.w.date.localeCompare(a.w.date) || String(b.w.time || '').localeCompare(String(a.w.time || '')) || b.i - a.i).map(x => x.w);
+function lastPrefs(id) { // «por lado» de la última vez que hiciste ese ejercicio y la última máquina que apuntaste
+  const es = recentFirst().flatMap(w => w.ex.filter(e => e.id === id)), withMaq = es.find(e => e.maq);
+  return { maq: (withMaq && withMaq.maq) || '', x2: !!(es[0] && es[0].x2) };
+}
+function machinesFor(id) { const out = []; for (const w of recentFirst()) for (const e of w.ex) if (e.id === id && e.maq && !out.some(m => normMaq(m) === normMaq(e.maq))) out.push(e.maq); return out.slice(0, 8); }
+function altsFor(e, taken) { // las elegidas a mano primero; después, las que más se parecen en músculos trabajados
+  const v = exMuscles(e), dot = (a, b) => Object.keys(a).reduce((t, k) => t + a[k] * (b[k] || 0), 0), nrm = a => Math.sqrt(dot(a, a)) || 1;
+  const sim = Object.keys(v).length ? Object.keys(EX).filter(id => id !== e.id && Object.keys(EX[id].m).length).map(id => [id, dot(v, EX[id].m) / nrm(v) / nrm(EX[id].m)]).filter(x => x[1] > .75).sort((a, b) => b[1] - a[1]).map(x => x[0]) : [];
+  return [...new Set([...(ALTS[e.id] || []), ...sim])].filter(id => id !== e.id && !taken.has(id)).slice(0, 5);
+}
 function exHistory(key, opt = {}) { // una entrada por día (se juntan las series del mismo día), de la más reciente a la más antigua
   const ws = S.workouts.map((w, i) => ({ w, i })).filter(({ w }) => w.id !== opt.excludeWid && (!opt.upTo || w.date <= opt.upTo))
     .sort((a, b) => b.w.date.localeCompare(a.w.date) || b.i - a.i);
   const byDay = new Map();
-  for (const { w } of ws) for (const e of w.ex) if (exKey(e) === key && workingSets(e).length) {
+  const m = normMaq(opt.maq); // con máquina: solo las veces en esa máquina (si no hay ninguna, todas)
+  for (const { w } of ws) for (const e of w.ex) if (exKey(e) === key && workingSets(e).length && (!m || normMaq(e.maq) === m)) {
     if (!byDay.has(w.date)) byDay.set(w.date, { date: w.date, wid: w.id, sets: [], e });
     byDay.get(w.date).sets.push(...workingSets(e));
   }
+  if (m && !byDay.size) return exHistory(key, { ...opt, maq: '' });
   return [...byDay.values()];
 }
 const isWeighted = h => h.some(x => x.sets.some(s => s.kg > 0)); // si alguna vez lleva peso, se mide por 1RM; si no, por repeticiones
@@ -1618,18 +1675,18 @@ function startLog(planId, editId, force) {
     if (same || (!editId && !planId && !DRAFT.id)) { UI.tab = 'cuerpo'; UI.body = 'log'; window.scrollTo(0, 0); return render(); }
     if (draftHasData()) { UI.switchTo = { planId: planId || null, editId: editId || null }; UI.tab = 'cuerpo'; UI.body = 'log'; window.scrollTo(0, 0); return render(); }
   }
-  UI.switchTo = null; UI.confirmDel = null;
+  UI.switchTo = null; UI.confirmDel = null; UI.swapOpen = null;
   if (editId) {
     const w = S.workouts.find(x => x.id === editId); if (!w) return;
-    DRAFT = { id: w.id, date: w.date, name: w.name, planId: w.planId || null, src: w.src, ex: w.ex.map(e => {
+    DRAFT = { id: w.id, date: w.date, name: w.name, planId: w.planId || null, src: w.src, time: w.time || '', dur: w.dur || '', ex: w.ex.map(e => {
       const hasLog = e.log && e.log.length;
-      return { id: e.id, n: e.n, m: e.m, sc: e.sc || '', ...(hasLog ? {} : { legacy: e.sets || 1 }), // entrenos antiguos con solo el nº de series: se conservan si no se rellenan
+      return { id: e.id, n: e.n, m: e.m, sc: e.sc || '', maq: e.maq || '', x2: !!e.x2, ...(hasLog ? {} : { legacy: e.sets || 1 }), // entrenos antiguos con solo el nº de series: se conservan si no se rellenan
         log: hasLog ? e.log.map(x => ({ kg: x.kg || '', reps: x.reps || '', warm: !!x.warm, done: true })) : Array.from({ length: e.sets || 1 }, () => ({ kg: '', reps: '', warm: false, done: false })) }; }) };
     DRAFT.orig = workoutKey(w); // cómo estaba al abrirlo: si se guarda sin cambios no se toca (ni se marca como corregido)
   } else {
     const p = PLAN.find(x => x.id === planId);
-    DRAFT = { id: null, date: today(), name: p ? p.name : 'Entreno libre', planId: p ? p.id : null, started: new Date().toISOString(),
-      ex: p ? p.ex.map(([id, sc]) => ({ id, sc, log: Array.from({ length: parseScheme(sc).sets }, () => ({ kg: '', reps: '', warm: false, done: false })) })) : [] };
+    DRAFT = { id: null, date: today(), name: p ? p.name : 'Entreno libre', planId: p ? p.id : null, started: new Date().toISOString(), time: nowHM(), dur: '',
+      ex: p ? p.ex.map(([id, sc]) => ({ id, sc, ...lastPrefs(id), log: Array.from({ length: parseScheme(sc).sets }, () => ({ kg: '', reps: '', warm: false, done: false })) })) : [] };
   }
   keepDraft(); UI.tab = 'cuerpo'; UI.body = 'log'; UI.rest = null; window.scrollTo(0, 0); render();
 }
@@ -1642,19 +1699,35 @@ function viewLog() {
   return sw + `<section class="card log-head"><div class="row between"><div class="grow"><p class="eyebrow">${D.id ? 'Editando entreno' : 'Entreno en curso'}</p>
       <input id="lg-name" data-lg="name" value="${esc(D.name)}" aria-label="Nombre del entreno" style="font-family:var(--display);font-weight:800;font-size:20px;background:transparent;border:0;padding:0"></div>
       <span class="pill pink num">${doneSets} series</span></div>
-    <label class="f" style="max-width:180px">Fecha<input type="date" id="lg-date" data-lg="date" value="${D.date}"></label>
     ${UI.rest ? `<div class="rest" id="rest"><span>Descanso</span><b class="num" id="rest-t">${restLeft()}</b><button class="link" data-a="rest30">+30 s</button><button class="link" data-a="restoff">Saltar</button></div>` : ''}</section>
-  ${D.ex.map((e, i) => { const x = EX[e.id] || {}, p = parseScheme(e.sc), sg = suggest(exKey(e), e.sc, { excludeWid: D.id, upTo: D.date }), unit = UNIT_LABEL[p.unit];
+  <section class="card">
+    <div class="row wrap" style="gap:10px;align-items:flex-end;flex-wrap:nowrap">
+      <label class="f" style="flex:1.4;min-width:0">Fecha<input type="date" id="lg-date" data-lg="date" value="${D.date}"></label>
+      <label class="f" style="flex:1;min-width:0">Hora<input type="time" id="lg-time" data-lg="time" value="${esc(D.time || '')}"></label>
+      <label class="f" style="flex:1;min-width:0">Minutos<input type="number" inputmode="numeric" min="1" max="600" id="lg-dur" data-lg="dur" value="${D.dur === '' || D.dur == null ? '' : D.dur}" placeholder="${!D.id && D.started && D.date === today() ? Math.max(1, Math.round((Date.now() - Date.parse(D.started)) / 60000)) : ''}"></label></div>
+    ${!D.id && D.started && (D.dur === '' || D.dur == null) ? '<p class="small muted">Si dejas la duración vacía, se calcula sola al guardar.</p>' : ''}
+  </section>
+  ${D.ex.map((e, i) => { const x = EX[e.id] || {}, p = parseScheme(e.sc), sg = suggest(exKey(e), e.sc, { excludeWid: D.id, upTo: D.date, maq: e.maq }), unit = UNIT_LABEL[p.unit], k = i + '-' + e.id;
+    const sgKg = v => kgTxt(e.x2 ? v / 2 : v) + (e.x2 ? ' kg/lado' : ' kg'), alts = UI.swapOpen === k ? altsFor(e, new Set(D.ex.map(z => z.id))) : [];
     return `<section class="card logex"><div class="row between" style="align-items:flex-start"><div class="grow"><h3>${esc(e.n || x.n || e.id)}</h3>
-        <p class="small muted">${e.sc ? `Objetivo ${esc(e.sc)}` : ''}${sg ? `${e.sc ? ' · ' : ''}Última vez: ${sg.last.sets.map(setTxt).join(', ')}` : ''}</p>
-        ${sg ? `<p class="small" style="color:${sg.up ? 'var(--ok)' : 'var(--pink-soft)'}">${sg.up ? `¡Toca subir! Prueba ${kgTxt(sg.kg)} kg × ${sg.reps}` : sg.kg ? `Hoy: ${kgTxt(sg.kg)} kg, intenta ${sg.reps} ${unit}` : `Hoy: intenta ${sg.reps} ${unit}`}</p>` : ''}</div>
-        ${UI.confirmDel === 'ex-' + i + '-' + e.id ? `<div class="row" style="gap:8px"><button class="link" data-a="lgdelexok" data-i="${i}">Quitar</button><button class="link" data-a="nodel">No</button></div>` : `<button class="x" data-a="lgdelex" data-i="${i}" aria-label="Quitar ejercicio">×</button>`}</div>
-      <div class="sets"><div class="set-row head"><span>Serie</span><span>kg</span><span>${unit}</span><span></span></div>
+        <p class="small muted">${e.sc ? `Objetivo ${esc(e.sc)}` : ''}${sg ? `${e.sc ? ' · ' : ''}Última vez: ${sg.last.sets.map(z => setTxtX(z, e.x2)).join(', ')}${sg.last.e.maq ? ` (${esc(sg.last.e.maq)})` : ''}` : ''}</p>
+        ${sg ? `<p class="small" style="color:${sg.up ? 'var(--ok)' : 'var(--pink-soft)'}">${sg.up ? `¡Toca subir! Prueba ${sgKg(sg.kg)} × ${sg.reps}` : sg.kg ? `Hoy: ${sgKg(sg.kg)}, intenta ${sg.reps} ${unit}` : `Hoy: intenta ${sg.reps} ${unit}`}</p>` : ''}</div>
+        <div class="row" style="gap:6px;flex-shrink:0"><button class="btn sm quiet" data-a="lgswap" data-i="${i}" aria-expanded="${UI.swapOpen === k}" title="Si la máquina está ocupada">⇄ Cambiar</button>
+        ${UI.confirmDel === 'ex-' + k ? `<button class="link" data-a="lgdelexok" data-i="${i}">Quitar</button><button class="link" data-a="nodel">No</button>` : `<button class="x" data-a="lgdelex" data-i="${i}" aria-label="Quitar ejercicio">×</button>`}</div></div>
+      ${UI.swapOpen === k ? `<div class="stack" style="gap:6px;margin:8px 0"><p class="small muted">¿Máquina ocupada? Cámbialo por${e.log.some(z => z.done) ? ' (las series que ya has hecho se quedan en este)' : ''}:</p>
+        ${alts.length ? `<div class="row wrap" style="gap:6px">${alts.map(id => `<button class="btn sm quiet" data-a="lgswapto" data-i="${i}" data-id="${id}">${esc(EX[id].n)}</button>`).join('')}</div>` : '<p class="small muted">No tengo alternativas para este; elige otro en «Añadir ejercicio».</p>'}
+        ${x.alt ? `<p class="small muted">Con lo que haya libre también vale: ${esc(x.alt)}.</p>` : ''}</div>` : ''}
+      <div class="row wrap" style="gap:8px;align-items:flex-end;margin:6px 0">
+        <label class="f grow" style="min-width:150px;margin:0">Máquina<input id="lg-${i}-maq" data-lg="maq" data-i="${i}" list="maqs-${i}" maxlength="60" value="${esc(e.maq || '')}" placeholder="${esc(x.maq ? 'Ej.: ' + x.maq : 'Cuál usas')}"></label>
+        <datalist id="maqs-${i}">${machinesFor(e.id).map(m => `<option value="${esc(m)}"></option>`).join('')}</datalist>
+        <button class="btn sm ${e.x2 ? '' : 'quiet'}" data-a="lgx2" data-i="${i}" aria-pressed="${!!e.x2}" title="Para discos o mancuernas: apuntas el peso de un lado y cuenta el doble">×2 por lado</button></div>
+      ${e.x2 ? '<p class="small muted">Apuntas el peso de un lado; se guarda el doble.</p>' : ''}
+      <div class="sets"><div class="set-row head"><span>Serie</span><span>${e.x2 ? 'kg/lado' : 'kg'}</span><span>${unit}</span><span></span></div>
       ${e.legacy ? `<p class="small muted">Este entreno se guardó sin kg ni repeticiones (${e.legacy} series). Si no rellenas nada, se queda como estaba.</p>` : ''}
-      ${e.log.map((s, j) => { const ph = sg ? { kg: sg.kg ? kgTxt(sg.kg) : '', reps: sg.reps } : { kg: '', reps: p.hi };
+      ${e.log.map((s, j) => { const ph = sg ? { kg: sg.kg ? kgTxt(e.x2 ? sg.kg / 2 : sg.kg) : '', reps: sg.reps } : { kg: '', reps: p.hi };
         return `<div class="set-row ${s.done ? 'done' : ''}">
           <button class="setno ${s.warm ? 'warm' : ''}" data-a="lgwarm" data-i="${i}" data-j="${j}" title="Tocar para marcar como calentamiento">${s.warm ? 'C' : j + 1 - e.log.slice(0, j).filter(x => x.warm).length}</button>
-          <input type="number" inputmode="decimal" step="0.5" min="0" id="lg-${i}-${j}-kg" data-lg="kg" data-i="${i}" data-j="${j}" value="${s.kg}" placeholder="${ph.kg}" aria-label="Kilos serie ${j + 1}">
+          <input type="number" inputmode="decimal" step="any" min="0" id="lg-${i}-${j}-kg" data-lg="kg" data-i="${i}" data-j="${j}" value="${s.kg === '' || s.kg == null ? '' : e.x2 ? Math.round(s.kg / 2 * 100) / 100 : s.kg}" placeholder="${ph.kg}" aria-label="${e.x2 ? 'Kilos por lado' : 'Kilos'} serie ${j + 1}">
           <input type="number" inputmode="numeric" min="0" id="lg-${i}-${j}-r" data-lg="reps" data-i="${i}" data-j="${j}" value="${s.reps}" placeholder="${ph.reps}" aria-label="${unit} serie ${j + 1}">
           <button class="box" role="checkbox" aria-checked="${!!s.done}" aria-label="Serie hecha" data-a="lgdone" data-i="${i}" data-j="${j}">${ICON_CHECK}</button></div>`; }).join('')}</div>
       <div class="row"><button class="btn sm quiet" data-a="lgaddset" data-i="${i}">+ Serie</button>${e.log.length > 1 ? `<button class="link" data-a="lgdelset" data-i="${i}">Quitar la última</button>` : ''}</div></section>`; }).join('')}
@@ -1670,7 +1743,7 @@ function saveLog() {
   const D = DRAFT; if (!D) return;
   const ex = D.ex.map(e => {
     const log = e.log.map(s => ({ kg: Math.max(0, +s.kg || 0), reps: Math.max(0, Math.round(+s.reps || 0)), warm: !!s.warm })).filter(s => s.reps > 0);
-    const base = { id: e.id, ...(e.n ? { n: e.n, m: e.m } : {}), ...(e.sc ? { sc: e.sc } : {}) };
+    const base = { id: e.id, ...(e.n ? { n: e.n, m: e.m } : {}), ...(e.sc ? { sc: e.sc } : {}), ...(String(e.maq || '').trim() ? { maq: String(e.maq).trim().slice(0, 60) } : {}), ...(e.x2 ? { x2: true } : {}) };
     if (!log.length && e.legacy) return { ...base, sets: e.legacy }; // sin rellenar: se conserva tal y como estaba
     return { ...base, sets: log.filter(s => !s.warm).length, log };
   }).filter(e => (e.log && e.log.length) || (!e.log && e.sets));
@@ -1683,7 +1756,9 @@ function saveLog() {
     const prev = prevH.flatMap(h => h.sets), weighted = prev.some(x => x.kg > 0) || ws.some(x => x.kg > 0);
     if (metric(ws, weighted) > metric(prev, weighted) + 0.01 || Math.max(...ws.map(x => x.kg)) > Math.max(...prev.map(x => x.kg))) prs.push(exName(e));
   }
-  const w = cleanWorkouts([{ id: D.id || uid(), date: D.date, name: (D.name || 'Entreno').slice(0, 80), ...(D.planId ? { planId: D.planId } : {}), ...(D.src ? { src: D.src } : {}), ex }])[0];
+  const auto = !D.id && D.started && D.date === today() ? Math.round((Date.now() - Date.parse(D.started)) / 60000) : 0; // duración: lo que pongas o, si no, desde que empezaste (si es razonable)
+  const dur = D.dur !== '' && D.dur != null ? +D.dur : auto >= 1 && auto <= 300 ? auto : 0;
+  const w = cleanWorkouts([{ id: D.id || uid(), date: D.date, name: (D.name || 'Entreno').slice(0, 80), ...(D.planId ? { planId: D.planId } : {}), ...(D.src ? { src: D.src } : {}), ...(D.time ? { time: D.time } : {}), ...(dur ? { dur } : {}), ex }])[0];
   const i = S.workouts.findIndex(x => x.id === w.id), prev = i >= 0 ? S.workouts[i] : null;
   const unchanged = D.id && (D.orig ? workoutKey(w) === D.orig : prev && workoutKey(prev) === workoutKey(w));
   if (unchanged) { DRAFT = null; keepDraft(); UI.body = 'entrenos'; UI.rest = null; UI.confirmDel = null; return commit('Sin cambios'); } // abierto solo para mirarlo: se queda como esté ahora (aunque Hevy lo haya actualizado)
@@ -1724,7 +1799,7 @@ function exDetail(k) {
       <div><p class="stat">${topKg ? kgTxt(topKg) : '—'}<small>${topKg ? 'kg' : ''}</small></p><p class="small muted">peso máximo usado</p></div></div>
     ${chart}<p class="small muted">${wt ? '1RM estimado con la fórmula de Epley a partir de tu mejor serie de cada día (las series de más de 15 repeticiones cuentan como 15).' : 'Repeticiones de tu mejor serie de cada día.'}</p></section>
   <section class="card"><h3>Sesiones</h3><div class="scroll-x"><table><thead><tr><th>Fecha</th><th style="text-align:left">Series</th><th>Volumen</th></tr></thead><tbody>
-    ${h.map(s => `<tr><td>${fmtDay(s.date)}</td><td style="text-align:left;white-space:normal">${s.sets.map(setTxt).join(' · ')}</td><td>${fmt(s.sets.reduce((a, z) => a + z.kg * z.reps, 0))}</td></tr>`).join('')}</tbody></table></div></section>`;
+    ${h.map(s => `<tr><td>${fmtDay(s.date)}</td><td style="text-align:left;white-space:normal">${s.sets.map(z => setTxtX(z, s.e.x2)).join(' · ')}${s.e.maq ? `<br><span class="small muted">${esc(s.e.maq)}</span>` : ''}</td><td>${fmt(s.sets.reduce((a, z) => a + z.kg * z.reps, 0))}</td></tr>`).join('')}</tbody></table></div></section>`;
 }
 
 /* ============ Conexiones: Apple Salud (vía Atajos) y Hevy (CSV o sincronización diaria de Claude) ============ */
@@ -1846,7 +1921,7 @@ function hevyAmount(exId, reps, secs, meters) { // pasa lo de Hevy a la unidad d
 function importHevyCSV(text) {
   const rows = parseCSV(text.replace(/^\uFEFF/, '')); if (rows.length < 2) return { ok: false, msg: 'El archivo está vacío' };
   const head = rows[0].map(h => h.trim().toLowerCase()), col = n => head.indexOf(n);
-  const iT = col('title'), iS = col('start_time'), iE = col('exercise_title'), iST = col('set_type'), iR = col('reps'), iDur = col('duration_seconds');
+  const iT = col('title'), iS = col('start_time'), iEnd = col('end_time'), iE = col('exercise_title'), iST = col('set_type'), iR = col('reps'), iDur = col('duration_seconds');
   const iKg = col('weight_kg') >= 0 ? col('weight_kg') : col('weight_lbs'), lbs = col('weight_kg') < 0 && col('weight_lbs') >= 0;
   const iDist = col('distance_km') >= 0 ? col('distance_km') : col('distance_miles'), miles = col('distance_km') < 0 && col('distance_miles') >= 0;
   const numCell = (r, i) => { if (i < 0) return 0; const v = parseFloat(String(r[i] || '').replace(',', '.')); return Number.isFinite(v) ? v : 0; };
@@ -1855,7 +1930,8 @@ function importHevyCSV(text) {
   for (const r of rows.slice(1)) {
     const start = r[iS], date = hevyDate(start); if (!date) continue;
     const title = (iT >= 0 ? r[iT] : '') || 'Entreno de Hevy', time = hevyTime(start), key = time ? date + ' ' + time : start + '|' + title;
-    if (!W.has(key)) W.set(key, { id: 'hevy-' + hashId(key), old: 'hevy-' + hashId(start + '|' + title), date, name: title.slice(0, 80), ex: new Map() });
+    const t2 = iEnd >= 0 ? hevyTime(r[iEnd]) : '', mins = hm => +hm.slice(0, 2) * 60 + +hm.slice(3), dur = time && t2 ? (mins(t2) - mins(time) + 1440) % 1440 : 0;
+    if (!W.has(key)) W.set(key, { id: 'hevy-' + hashId(key), old: 'hevy-' + hashId(start + '|' + title), date, name: title.slice(0, 80), time, dur, ex: new Map() });
     const name = (r[iE] || '').trim().slice(0, 80); if (!name) continue;
     const exId = hevyToEx(name), id = exId || 'hv-' + hashId(name.toLowerCase());
     const amount = hevyAmount(exId, numCell(r, iR), numCell(r, iDur), numCell(r, iDist) * (miles ? 1609.34 : 1000)); if (!amount) continue;
@@ -1866,7 +1942,7 @@ function importHevyCSV(text) {
   let added = 0, updated = 0, kept = 0, gone = 0, old = 0;
   const hv = S.hevy || {}, deleted = new Set(hv.deleted || []), cut = hv.archivedBefore > daysAgo(400) ? hv.archivedBefore : daysAgo(400); // lo anterior ya está (o estaría) en el archivo
   for (const w of W.values()) {
-    const wo = cleanWorkouts([{ id: w.id, date: w.date, name: w.name, src: 'hevy', ex: [...w.ex.values()].map(e => { const log = e.log.slice(0, 30); return { ...e, sets: log.filter(x => !x.warm).length, log }; }).filter(e => e.sets > 0) }])[0];
+    const wo = cleanWorkouts([{ id: w.id, date: w.date, name: w.name, src: 'hevy', ...(w.time ? { time: w.time } : {}), ...(w.dur > 0 ? { dur: w.dur } : {}), ex: [...w.ex.values()].map(e => { const log = e.log.slice(0, 30); return { ...e, sets: log.filter(x => !x.warm).length, log }; }).filter(e => e.sets > 0) }])[0];
     if (!wo || !wo.ex.length) continue;
     if (deleted.has(w.id) || deleted.has(w.old) || deleted.has(hevySig(wo))) { gone++; continue; } // lo borraste en la app: no vuelve
     let i = S.workouts.findIndex(x => x.id === w.id); if (i < 0) i = S.workouts.findIndex(x => x.id === w.old); // importado con la versión anterior del id
@@ -1912,8 +1988,8 @@ function bodyWorkouts() {
   <section class="card"><div class="row between"><h2>Historial</h2><button class="btn sm" data-a="startlog">Entreno libre</button></div><p class="small muted">Toca un entreno para verlo o corregirlo.</p>
     ${S.workouts.length ? [...S.workouts].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12).map(w => {
       const ms = {}; w.ex.forEach(e => Object.entries(exMuscles(e)).forEach(([k, f]) => { if (f >= .7 && MUSCLES[k]) ms[k] = 1; }));
-      const tops = w.ex.filter(e => workingSets(e).length).slice(0, 3).map(e => `${esc(exName(e))} ${setTxt(bestOf(workingSets(e)))}`);
-      return `<div class="list-item"><button class="tap grow stack" style="gap:4px;min-width:0" data-a="editw" data-id="${w.id}"><div class="row between"><h3>${esc(w.name)}${w.src === 'hevy' ? ' <span class="pill">Hevy</span>' : ''}</h3><span class="small muted num">${fmtDay(w.date)}</span></div>
+      const tops = w.ex.filter(e => workingSets(e).length).slice(0, 3).map(e => `${esc(exName(e))} ${setTxtX(bestOf(workingSets(e)), e.x2)}`);
+      return `<div class="list-item"><button class="tap grow stack" style="gap:4px;min-width:0" data-a="editw" data-id="${w.id}"><div class="row between"><h3>${esc(w.name)}${w.src === 'hevy' ? ' <span class="pill">Hevy</span>' : ''}</h3><span class="small muted num">${fmtDay(w.date)}${w.time ? ' · ' + w.time : ''}${w.dur ? ' · ' + w.dur + ' min' : ''}</span></div>
         <p class="small muted">${w.ex.reduce((a, e) => a + setCount(e), 0)} series · ${Object.keys(ms).map(k => MUSCLES[k][0]).join(', ')}</p>${tops.length ? `<p class="small">${tops.join(' · ')}</p>` : ''}</button>
         ${UI.confirmDel === 'w-' + w.id ? `<div class="row"><button class="btn sm" data-a="delwok" data-id="${w.id}">Borrar</button><button class="link" data-a="nodel">No</button></div>` : `<button class="link" data-a="delw" data-id="${w.id}" aria-label="Borrar entreno">Borrar</button>`}</div>`; }).join('') : '<p class="muted small">Aún no hay entrenos.</p>'}
   </section>
@@ -2025,7 +2101,8 @@ function viewProfile() {
     ${SYNC.state === 'local' ? '<p class="small muted">Ahora mismo tus datos solo están en este dispositivo. Se conectan cuando abres la app desde Claude.</p>'
       : `<p class="small muted">Tus datos se guardan en la base de datos privada de esta app en tu cuenta de Claude: solo tú (y Claude, cuando se lo pides) podéis verlos. Así se sincronizan entre tus dispositivos y Claude puede leer y actualizar tus proyectos, relaciones, aprendizaje, salud y dieta cuando le preguntes.${SYNC.at ? ` Última sincronización: ${pad(SYNC.at.getHours())}:${pad(SYNC.at.getMinutes())}.` : ''}</p>`}
     ${SYNC.state === 'error' && SYNC.err ? `<p class="small" style="color:var(--warn)">${esc(SYNC.err)}</p>` : ''}
-    ${SYNC.big.size ? `<p class="small" style="color:var(--warn)">Hay datos que no caben en la nube (${[...SYNC.big].map(x => ({ salud: 'salud y entrenos', diario: 'diario', dieta: 'dieta', chat: 'chat', relaciones: 'relaciones', lectura: 'lectura', aprendizaje: 'aprendizaje', proyectos: 'proyectos' })[x] || x).join(', ')}). Siguen guardados en este dispositivo, pero no llegan a tus otros dispositivos ni a Claude.</p>` : ''}
+    ${SYNC.state !== 'local' ? `<p class="small muted">Espacio que ocupa cada apartado (máximo 250 KB cada uno; lo de hace más de 400 días se archiva solo): ${Object.keys(SECTIONS).map(k => [k, J(pick(S, k)).length]).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, n]) => `${SEC_NAME[k] || k} ${fmt(n / 1024, n < 10240 ? 1 : 0)} KB`).join(' · ')}.</p>` : ''}
+    ${SYNC.big.size ? `<p class="small" style="color:var(--warn)">Hay datos que no caben en la nube (${[...SYNC.big].map(x => SEC_NAME[x] || x).join(', ')}). Siguen guardados en este dispositivo, pero no llegan a tus otros dispositivos ni a Claude.</p>` : ''}
     ${backupInfo()}
     <p class="small muted">Dentro de la app tienes el chat con Claude en Inicio. Fuera, en una conversación con Claude que pueda abrir artefactos, pásale el enlace de la app y pídele lo que necesites.</p></section>`;
 }
@@ -2213,10 +2290,10 @@ function safeUrl(u) {
   try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : null; } catch (e) { return null; }
 }
 const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
-function defaultTopics() {
+function defaultTopics(goals = true) { // goals: con 3 metas sugeridas (solo en el ejemplo)
   return [['ingles', 'Inglés'], ['claude', 'Claude e IA'], ['programacion', 'Programación']].map(([key, name]) => ({
     id: uid(), key, name, resources: [],
-    items: ((LEARN[key] || {}).goals || []).slice(0, 3).map(text => ({ id: uid(), text, status: 'pendiente', hard: false })),
+    items: (goals ? (LEARN[key] || {}).goals || [] : []).slice(0, 3).map(text => ({ id: uid(), text, status: 'pendiente', hard: false })),
   }));
 }
 const topicPct = t => t.items.length ? Math.round(t.items.filter(i => i.status === 'aprendido').length / t.items.length * 100) : 0;
@@ -2487,8 +2564,12 @@ function homeFood() {
 const SECTIONS = { perfil: ['v', 'example', 'profile'], lectura: ['books', 'learnings', 'active', 'checks'], salud: ['weights', 'measures', 'workouts', 'health', 'hevy'],
   diario: ['days', 'moods'], dieta: ['diet'], proyectos: ['projects'], relaciones: ['rel'], aprendizaje: ['topics'], chat: ['chat'] };
 const isSec = id => Object.prototype.hasOwnProperty.call(SECTIONS, id);
+const hasData = x => !!x && (['workouts', 'rel', 'projects', 'learnings', 'weights', 'measures', 'chat'].some(k => Array.isArray(x[k]) && x[k].length > 0)
+  || ['days', 'moods', 'checks'].some(k => x[k] && typeof x[k] === 'object' && Object.keys(x[k]).length > 0)
+  || (Array.isArray(x.topics) && x.topics.some(t => t && ((t.items || []).length || (t.resources || []).length)))); // ¿hay algo apuntado de verdad?
+const SEC_NAME = { perfil: 'perfil', lectura: 'lectura', salud: 'salud y entrenos', diario: 'diario', dieta: 'dieta', proyectos: 'proyectos', relaciones: 'relaciones', aprendizaje: 'aprendizaje', chat: 'chat' };
 const pick = (src, sec) => Object.fromEntries(SECTIONS[sec].map(k => [k, src[k] === undefined ? null : src[k]]));
-const J = x => JSON.stringify(x);
+const J = x => JSON.stringify(x, (k, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.keys(v).sort().reduce((o, key) => { o[key] = v[key]; return o; }, {}) : v); // claves siempre en el mismo orden: comparar por contenido, no por el orden en que llegan
 const SYNC = { db: null, state: 'local', at: null, ready: false, live: false, busy: false, again: false, timer: null, retries: 0, big: new Set(), err: null };
 const lsGet = (k, d) => { try { const v = localStorage.getItem(KEY + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(KEY + k, J(v)); } catch (e) {} };
@@ -2559,7 +2640,8 @@ function onRemote(snap) {
     else if (!synced) { // dispositivo nuevo con una nube que ya tiene datos
       lsSet('.backup', { at: new Date().toISOString(), example: !!S.example, S });
       const rp = docs.find(d => d.id === 'perfil'), remoteExample = rp ? (rp.data() || {}).example : undefined;
-      const localWins = remoteExample === true && S.example === false;
+      const remote = Object.assign({}, ...docs.map(d => pick(d.data() || {}, d.id)));
+      const localWins = S.example === false && hasData(S) && (remoteExample === true || !hasData(remote)); // solo gana lo de aquí si son datos de verdad y la nube no tiene (o solo tiene el ejemplo)
       for (const doc of docs) {
         const data = doc.data() || {}, rj = J(pick(data, doc.id));
         BASE[doc.id] = rj;
@@ -2902,8 +2984,17 @@ document.addEventListener('click', e => {
   if (DRAFT && a.startsWith('lg')) {
     const e = DRAFT.ex[+d.i], st = e && e.log[+d.j];
     if (a !== 'lgdelex' && a !== 'lgdelexok' && String(UI.confirmDel).startsWith('ex-')) UI.confirmDel = null;
-    if (a === 'lgdone' && st) { if (!st.done) { const ph = document.getElementById(`lg-${d.i}-${d.j}-kg`), pr = document.getElementById(`lg-${d.i}-${d.j}-r`); if (st.kg === '' && ph && ph.placeholder) st.kg = +ph.placeholder.replace(',', '.') || ''; if (st.reps === '' && pr && pr.placeholder) st.reps = +pr.placeholder || ''; if (!st.reps) { toast('Pon las repeticiones'); return; } st.done = true; if (!st.warm) UI.rest = Date.now() + restFor(e) * 1000; } else st.done = false; }
+    if (a !== 'lgswap' && a !== 'lgswapto' && a !== 'lgx2') UI.swapOpen = null;
+    if (a === 'lgdone' && st) { if (!st.done) { const ph = document.getElementById(`lg-${d.i}-${d.j}-kg`), pr = document.getElementById(`lg-${d.i}-${d.j}-r`); if (st.kg === '' && ph && ph.placeholder) st.kg = (+ph.placeholder.replace(/\./g, '').replace(',', '.') || 0) * (e.x2 ? 2 : 1) || ''; if (st.reps === '' && pr && pr.placeholder) st.reps = +pr.placeholder || ''; if (!st.reps) { toast('Pon las repeticiones'); return; } st.done = true; if (!st.warm) UI.rest = Date.now() + restFor(e) * 1000; } else st.done = false; }
     if (a === 'lgwarm' && st) st.warm = !st.warm;
+    if (a === 'lgx2' && e) { e.x2 = !e.x2; e.log.forEach(z => { if (z.kg !== '' && z.kg != null) z.kg = e.x2 ? z.kg * 2 : z.kg / 2; }); } // lo que ves escrito se mantiene: pasa a ser el peso de un lado
+    if (a === 'lgswap' && e) { const k = d.i + '-' + e.id; UI.swapOpen = UI.swapOpen === k ? null : k; }
+    if (a === 'lgswapto' && e && EX[d.id]) { // máquina ocupada: lo hecho se queda; las series que faltan pasan a la alternativa
+      const i = +d.i, done = e.log.filter(z => z.done), left = e.log.length - done.length;
+      const ne = { id: d.id, sc: e.sc, ...lastPrefs(d.id), log: Array.from({ length: Math.max(1, done.length ? left || parseScheme(e.sc).sets : e.log.length) }, () => ({ kg: '', reps: '', warm: false, done: false })) };
+      if (done.length) { e.log = done; DRAFT.ex.splice(i + 1, 0, ne); } else DRAFT.ex[i] = ne;
+      UI.swapOpen = null; toast(`Cambiado por ${EX[d.id].n}`);
+    }
     if (a === 'lgaddset' && e) { const last = e.log[e.log.length - 1] || {}; e.log.push({ kg: last.kg ?? '', reps: '', warm: false, done: false }); }
     if (a === 'lgdelset' && e && e.log.length > 1) e.log.pop();
     if (a === 'lgdelex' && e) { if (e.log.some(x => x.done || x.kg !== '' || x.reps !== '')) { UI.confirmDel = 'ex-' + d.i + '-' + e.id; return render(); } DRAFT.ex.splice(+d.i, 1); UI.confirmDel = null; } // con series apuntadas, preguntar antes
@@ -2925,7 +3016,7 @@ document.addEventListener('change', e => {
   const el = e.target;
   if (el.dataset.a === 'pstatus') { S.projects.find(p => p.id === el.dataset.id).status = el.value; commit(); document.getElementById(el.id)?.focus(); }
   if (el.dataset.a === 'club') { S.profile.club = el.value; save(); el.closest('section').outerHTML = gymCard(); document.getElementById('f-club').focus(); }
-  if (el.id === 'lg-add' && el.value && DRAFT) { const pe = ((PLAN.find(x => x.id === DRAFT.planId) || {}).ex || []).find(([id]) => id === el.value), sc = pe ? pe[1] : '', p = parseScheme(sc || '3×8-12'); DRAFT.ex.push({ id: el.value, sc, log: Array.from({ length: p.sets }, () => ({ kg: '', reps: '', warm: false, done: false })) }); keepDraft(); render(); return; } // si es del plan del día, vuelve con su esquema
+  if (el.id === 'lg-add' && el.value && DRAFT) { const pe = ((PLAN.find(x => x.id === DRAFT.planId) || {}).ex || []).find(([id]) => id === el.value), sc = pe ? pe[1] : '', p = parseScheme(sc || '3×8-12'); DRAFT.ex.push({ id: el.value, sc, ...lastPrefs(el.value), log: Array.from({ length: p.sets }, () => ({ kg: '', reps: '', warm: false, done: false })) }); keepDraft(); render(); return; } // si es del plan del día, vuelve con su esquema
   if (el.id === 'hevy-file' && el.files && el.files[0]) { const fr = new FileReader(); fr.onload = () => { const r = importHevyCSV(String(fr.result || '')); if (r.ok) commit(r.msg); else toast(r.msg); }; fr.onerror = () => toast('No he podido leer el archivo'); fr.readAsText(el.files[0]); el.value = ''; }
   if (el.dataset.a === 'relstatus') { S.rel.find(x => x.id === el.dataset.id).status = el.value; save(); toast('Guardado'); }
   if (el.id === 'l-book') { UI.sheet = { type: 'learning', book: el.value }; render(); }
@@ -2933,7 +3024,10 @@ document.addEventListener('change', e => {
 document.addEventListener('input', e => { // lo que escribes en el registro del entreno se guarda al momento en el borrador
   const el = e.target, f = el.dataset && el.dataset.lg; if (!f || !DRAFT) return;
   if (f === 'name') DRAFT.name = el.value; else if (f === 'date') { if (/^\d{4}-\d{2}-\d{2}$/.test(el.value)) DRAFT.date = el.value; }
-  else { const st = DRAFT.ex[+el.dataset.i]?.log[+el.dataset.j]; if (st) st[f] = el.value === '' ? '' : +el.value; }
+  else if (f === 'time') DRAFT.time = /^\d{2}:\d{2}$/.test(el.value) ? el.value : '';
+  else if (f === 'dur') DRAFT.dur = el.value === '' ? '' : Math.max(0, Math.round(+el.value) || 0);
+  else if (f === 'maq') { const ex = DRAFT.ex[+el.dataset.i]; if (ex) ex.maq = el.value.slice(0, 60); }
+  else { const ex = DRAFT.ex[+el.dataset.i], st = ex?.log[+el.dataset.j]; if (st) st[f] = el.value === '' ? '' : f === 'kg' && ex.x2 ? +el.value * 2 : +el.value; } // por lado: se guarda el total
   keepDraft();
 });
 document.addEventListener('paste', e => { // pegar los datos del atajo de Salud los importa al momento
