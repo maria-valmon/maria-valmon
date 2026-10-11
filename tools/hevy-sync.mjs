@@ -96,7 +96,8 @@ function mergeMode() {
   // un entreno importado antes por CSV (mismo día y nombre) se sustituye por el de la API, para no tenerlo dos veces
   const fromCSV = w => w.src === 'hevy' && !/^hevy-[0-9a-f]{8}-[0-9a-f]{4}-/i.test(w.id); // los de la API llevan el UUID de Hevy
   const sameAs = (a, b) => a.date === b.date && a.name === b.name;
-  for (const [id, u] of up) if (tomb.has(id) || tomb.has(hevySig(u)) || edited.some(w => w.id === id || (fromCSV(w) && sameAs(w, u)))) up.delete(id); // borrado o corregido en la app: manda la app
+  const archivedBefore = (doc.hevy && doc.hevy.archivedBefore) || ''; // lo anterior ya está en valmon-archivo: no se vuelve a meter en la app
+  for (const [id, u] of up) if ((archivedBefore && u.date < archivedBefore && !workouts.some(w => w.id === id)) || tomb.has(id) || tomb.has(hevySig(u)) || edited.some(w => w.id === id || (fromCSV(w) && sameAs(w, u)))) up.delete(id); // borrado o corregido en la app: manda la app
   for (const id of [...del]) if (edited.some(w => w.id === id)) del.delete(id);
   const dupCSV = w => fromCSV(w) && !w.edited && [...up.values()].some(u => sameAs(u, w));
   const kept = workouts.filter(w => !del.has(w.id) && !up.has(w.id) && !dupCSV(w));

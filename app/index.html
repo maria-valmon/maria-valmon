@@ -1306,7 +1306,7 @@ function normalize() { // repara la forma de todos los datos: antiguos, de otro 
   S.health = isPlain(S.health) && typeof S.health.lastToken === 'string' ? { lastToken: str(S.health.lastToken, 60), at: str(S.health.at, 40), date: date(S.health.date),
     max: dict(S.health.max, v => Array.isArray(v) && v.length === 2 && v.every(n => Number.isFinite(+n)) ? [Math.max(0, +v[0]), Math.max(0, +v[1])] : undefined) } : null; // max: lo más alto que mandó Salud cada día
 
-  S.hevy = isPlain(S.hevy) ? { csvAt: str(S.hevy.csvAt, 40), apiAt: str(S.hevy.apiAt, 40), deleted: arr(S.hevy.deleted).filter(x => typeof x === 'string' && ID.test(x)).slice(-400) } : null; // deleted: entrenos de Hevy borrados en la app, para no volver a traerlos
+  S.hevy = isPlain(S.hevy) ? { csvAt: str(S.hevy.csvAt, 40), apiAt: str(S.hevy.apiAt, 40), deleted: arr(S.hevy.deleted).filter(x => typeof x === 'string' && ID.test(x)).slice(-400), ...(DATE.test(S.hevy.archivedBefore) ? { archivedBefore: S.hevy.archivedBefore } : {}) } : null; // deleted: entrenos de Hevy borrados en la app, para no volver a traerlos
   S.days = dict(S.days, v => ({ steps: Math.max(0, num(obj(v).steps, 0)), intake: Math.max(0, num(obj(v).intake, 0)), ...(num(obj(v).active, 0) > 0 ? { active: Math.min(5000, num(obj(v).active, 0)) } : {}) }));
   S.moods = dict(S.moods, v => { v = obj(v); const m = num(v.m, 0); return { ...(m >= 1 && m <= 5 ? { m: Math.round(m) } : {}), energy: num(v.energy, 3), note: str(v.note, 2000) }; });
   S.projects = arr(S.projects).filter(isPlain).map(pr => ({ id: id(pr.id), name: str(pr.name, 120), area: str(pr.area, 60), status: oneOf(pr.status, ['idea', 'en marcha', 'pausado', 'hecho'], 'idea'), next: str(pr.next, 200),
@@ -1623,19 +1623,21 @@ let DRAFT = null; try { DRAFT = JSON.parse(localStorage.getItem(KEY + '.draft') 
 if (DRAFT && (!Array.isArray(DRAFT.ex) || typeof DRAFT.date !== 'string')) DRAFT = null;
 const keepDraft = () => { try { localStorage.setItem(KEY + '.draft', JSON.stringify(DRAFT)); } catch (e) {} };
 const draftHasData = () => !!DRAFT && (!!DRAFT.id || DRAFT.ex.some(e => e.log.some(x => x.done || x.kg !== '' || x.reps !== '')));
+const workoutKey = w => J({ ...cleanWorkouts([w])[0], id: undefined, edited: undefined }); // contenido del entreno (el id puede cambiar al migrar los de Hevy)
 function startLog(planId, editId, force) {
   if (DRAFT && !force) {
     const same = editId ? DRAFT.id === editId : !DRAFT.id && (!planId || DRAFT.planId === planId);
     if (same || (!editId && !planId && !DRAFT.id)) { UI.tab = 'cuerpo'; UI.body = 'log'; window.scrollTo(0, 0); return render(); }
     if (draftHasData()) { UI.switchTo = { planId: planId || null, editId: editId || null }; UI.tab = 'cuerpo'; UI.body = 'log'; window.scrollTo(0, 0); return render(); }
   }
-  UI.switchTo = null;
+  UI.switchTo = null; UI.confirmDel = null;
   if (editId) {
     const w = S.workouts.find(x => x.id === editId); if (!w) return;
     DRAFT = { id: w.id, date: w.date, name: w.name, planId: w.planId || null, src: w.src, ex: w.ex.map(e => {
       const hasLog = e.log && e.log.length;
       return { id: e.id, n: e.n, m: e.m, sc: e.sc || '', ...(hasLog ? {} : { legacy: e.sets || 1 }), // entrenos antiguos con solo el nº de series: se conservan si no se rellenan
         log: hasLog ? e.log.map(x => ({ kg: x.kg || '', reps: x.reps || '', warm: !!x.warm, done: true })) : Array.from({ length: e.sets || 1 }, () => ({ kg: '', reps: '', warm: false, done: false })) }; }) };
+    DRAFT.orig = workoutKey(w); // cómo estaba al abrirlo: si se guarda sin cambios no se toca (ni se marca como corregido)
   } else {
     const p = PLAN.find(x => x.id === planId);
     DRAFT = { id: null, date: today(), name: p ? p.name : 'Entreno libre', planId: p ? p.id : null, started: new Date().toISOString(),
@@ -1658,7 +1660,7 @@ function viewLog() {
     return `<section class="card logex"><div class="row between" style="align-items:flex-start"><div class="grow"><h3>${esc(e.n || x.n || e.id)}</h3>
         <p class="small muted">${e.sc ? `Objetivo ${esc(e.sc)}` : ''}${sg ? `${e.sc ? ' · ' : ''}Última vez: ${sg.last.sets.map(setTxt).join(', ')}` : ''}</p>
         ${sg ? `<p class="small" style="color:${sg.up ? 'var(--ok)' : 'var(--pink-soft)'}">${sg.up ? `¡Toca subir! Prueba ${kgTxt(sg.kg)} kg × ${sg.reps}` : sg.kg ? `Hoy: ${kgTxt(sg.kg)} kg, intenta ${sg.reps} ${unit}` : `Hoy: intenta ${sg.reps} ${unit}`}</p>` : ''}</div>
-        ${UI.confirmDel === 'ex-' + i ? `<div class="row" style="gap:8px"><button class="link" data-a="lgdelexok" data-i="${i}">Quitar</button><button class="link" data-a="nodel">No</button></div>` : `<button class="x" data-a="lgdelex" data-i="${i}" aria-label="Quitar ejercicio">×</button>`}</div>
+        ${UI.confirmDel === 'ex-' + i + '-' + e.id ? `<div class="row" style="gap:8px"><button class="link" data-a="lgdelexok" data-i="${i}">Quitar</button><button class="link" data-a="nodel">No</button></div>` : `<button class="x" data-a="lgdelex" data-i="${i}" aria-label="Quitar ejercicio">×</button>`}</div>
       <div class="sets"><div class="set-row head"><span>Serie</span><span>kg</span><span>${unit}</span><span></span></div>
       ${e.legacy ? `<p class="small muted">Este entreno se guardó sin kg ni repeticiones (${e.legacy} series). Si no rellenas nada, se queda como estaba.</p>` : ''}
       ${e.log.map((s, j) => { const ph = sg ? { kg: sg.kg ? kgTxt(sg.kg) : '', reps: sg.reps } : { kg: '', reps: p.hi };
@@ -1693,9 +1695,11 @@ function saveLog() {
     const prev = prevH.flatMap(h => h.sets), weighted = prev.some(x => x.kg > 0) || ws.some(x => x.kg > 0);
     if (metric(ws, weighted) > metric(prev, weighted) + 0.01 || Math.max(...ws.map(x => x.kg)) > Math.max(...prev.map(x => x.kg))) prs.push(exName(e));
   }
-  const w = { id: D.id || uid(), date: D.date, name: (D.name || 'Entreno').slice(0, 80), ...(D.planId ? { planId: D.planId } : {}), ...(D.src ? { src: D.src } : {}), ex };
+  const w = cleanWorkouts([{ id: D.id || uid(), date: D.date, name: (D.name || 'Entreno').slice(0, 80), ...(D.planId ? { planId: D.planId } : {}), ...(D.src ? { src: D.src } : {}), ex }])[0];
   const i = S.workouts.findIndex(x => x.id === w.id), prev = i >= 0 ? S.workouts[i] : null;
-  if (prev && prev.src === 'hevy') { const strip = x => J({ ...cleanWorkouts([x])[0], edited: undefined }); if (prev.edited || strip(prev) !== strip(w)) w.edited = true; } // corregido aquí: al reimportar de Hevy no se pisa
+  const unchanged = D.id && (D.orig ? workoutKey(w) === D.orig : prev && workoutKey(prev) === workoutKey(w));
+  if (unchanged) { DRAFT = null; keepDraft(); UI.body = 'entrenos'; UI.rest = null; UI.confirmDel = null; return commit('Sin cambios'); } // abierto solo para mirarlo: se queda como esté ahora (aunque Hevy lo haya actualizado)
+  if (D.src === 'hevy' && D.id) w.edited = true; // corregido aquí: al reimportar de Hevy no se pisa
   if (i >= 0) S.workouts[i] = w; else S.workouts.push(w);
   DRAFT = null; keepDraft(); UI.body = 'entrenos'; UI.rest = null; UI.confirmDel = null;
   commit(prs.length ? `¡Récord en ${prs.slice(0, 2).join(' y ')}${prs.length > 2 ? ' y más' : ''}!` : 'Entreno guardado');
@@ -1748,14 +1752,16 @@ function importHealth(token, quiet, again) { // tolera puntos de miles, comas y 
   const token0 = `s_${date}_${steps}_${kcal}_${Math.round(kg * 10)}`;
   if (!again && S.health && S.health.lastToken === token0) { if (!quiet) toast('Esos datos ya estaban'); return false; }
   // pasos y kcal que manda Salud para un día solo suben: un enlace con menos que otro ya importado de ese día es antiguo (una pestaña vieja que se recarga)
-  const seen = (S.health && S.health.max) || {}, prev = seen[date];
-  if (prev && ((steps && steps < prev[0]) || (kcal && kcal < prev[1]))) { if (!quiet) toast('Ya tenías datos más recientes de ese día'); return false; }
+  // si lo pegas tú a mano (quiet = false) se acepta igualmente: así puedes corregir un día si el Atajo mandó datos de más
+  const seen = (S.health && S.health.max) || {}, prev = seen[date], manual = !quiet && !again;
+  if (prev && !manual && ((steps && steps < prev[0]) || (kcal && kcal < prev[1]))) { toast('Ese enlace de Salud es antiguo: ya tenías datos más recientes de ese día'); return false; }
   const day = S.days[date] = { ...(S.days[date] || {}) };
   if (steps) day.steps = steps; if (kcal) day.active = kcal;
   const okKg = kg >= 30 && kg <= 300;
   if (okKg) { S.weights = S.weights.filter(x => x.date !== date); S.weights.push({ date, kg: Math.round(kg * 10) / 10 }); S.weights.sort((a, b) => a.date.localeCompare(b.date)); }
-  const max = { ...seen, [date]: [Math.max(steps, prev ? prev[0] : 0), Math.max(kcal, prev ? prev[1] : 0)] };
-  S.health = { lastToken: token0, at: new Date().toISOString(), date, max: Object.fromEntries(Object.entries(max).sort((a, b) => a[0].localeCompare(b[0])).slice(-14)) };
+  const max = { ...seen, [date]: manual ? [steps, kcal] : [Math.max(steps, prev ? prev[0] : 0), Math.max(kcal, prev ? prev[1] : 0)] }, from = daysAgo(60); // se recuerda todo el periodo que se acepta
+  const last = S.health && S.health.date > date ? S.health.date : date; // un enlace de un día anterior no hace retroceder «último dato»
+  S.health = { lastToken: token0, at: new Date().toISOString(), date: last, max: Object.fromEntries(Object.entries(max).filter(([d]) => d >= from)) };
   commit(again ? null : `Salud: ${fmt(steps)} pasos${kcal ? ', ' + fmt(kcal) + ' kcal activas' : ''}${okKg ? ', ' + fmt(kg, 1) + ' kg' : ''}`);
   return true;
 }
@@ -1763,8 +1769,8 @@ let HEALTH_PENDING = null; // si llega antes de comparar con la nube, se vuelve 
 function checkHash() {
   try {
     if (!HEALTH_RE.test(location.hash)) return;
-    const t = location.hash; if (!SYNC.ready) HEALTH_PENDING = t;
-    importHealth(t, true);
+    const t = location.hash, ok = importHealth(t, true);
+    if (ok && !SYNC.ready) HEALTH_PENDING = { t, token: S.health.lastToken, at: S.health.at }; // solo si de verdad trajo algo nuevo
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} // que recargar la página no lo vuelva a importar
   } catch (e) {}
 }
@@ -1870,21 +1876,23 @@ function importHevyCSV(text) {
   }
   if (!W.size) return { ok: false, msg: 'No he reconocido ninguna fecha en el archivo. ¿Es la exportación de entrenos de Hevy?' };
   let added = 0, updated = 0, kept = 0, gone = 0, old = 0;
-  const hv = S.hevy || {}, deleted = new Set(hv.deleted || []), cut = daysAgo(400);
+  const hv = S.hevy || {}, deleted = new Set(hv.deleted || []), cut = hv.archivedBefore > daysAgo(400) ? hv.archivedBefore : daysAgo(400); // lo anterior ya está (o estaría) en el archivo
   for (const w of W.values()) {
     const wo = cleanWorkouts([{ id: w.id, date: w.date, name: w.name, src: 'hevy', ex: [...w.ex.values()].map(e => { const log = e.log.slice(0, 30); return { ...e, sets: log.filter(x => !x.warm).length, log }; }).filter(e => e.sets > 0) }])[0];
     if (!wo || !wo.ex.length) continue;
-    if (deleted.has(w.id) || deleted.has(w.old)) { gone++; continue; }    // lo borraste en la app: no vuelve
+    if (deleted.has(w.id) || deleted.has(w.old) || deleted.has(hevySig(wo))) { gone++; continue; } // lo borraste en la app: no vuelve
     let i = S.workouts.findIndex(x => x.id === w.id); if (i < 0) i = S.workouts.findIndex(x => x.id === w.old); // importado con la versión anterior del id
-    if (i < 0 && w.date < cut) { old++; continue; }                         // lo de hace más de 400 días va al archivo, no a la app
+    if (i < 0 && w.date < cut) { old++; continue; }                         // lo antiguo va al archivo, no a la app
+    if (i < 0 && S.workouts.some(x => HEVY_API_ID.test(x.id) && x.date === wo.date && x.name === wo.name)) continue; // ya llegó por la sincronización automática
     if (i < 0) { S.workouts.push(wo); added++; continue; }
     const cur = S.workouts[i];
+    if (DRAFT && DRAFT.id === cur.id && cur.id !== w.id) { DRAFT.id = w.id; keepDraft(); } // un entreno abierto para corregir sigue apuntando al mismo
     if (cur.edited) { if (cur.id !== w.id) S.workouts[i] = { ...cur, id: w.id }; kept++; continue; } // lo corregiste en la app: manda tu versión
     if (J({ ...cur, id: w.id }) !== J(wo)) updated++;
     S.workouts[i] = wo;
   }
   S.hevy = { ...hv, csvAt: new Date().toISOString() };
-  const extra = [updated ? `${updated} actualizados` : '', kept ? `${kept} que corregiste aquí se quedan como los dejaste` : '', gone ? `${gone} que borraste no vuelven` : '', old ? `${old} de hace más de 400 días no se importan` : ''].filter(Boolean);
+  const extra = [updated ? `${updated} actualizados` : '', kept ? `${kept} que corregiste aquí se quedan como los dejaste` : '', gone ? `${gone} que borraste no vuelven` : '', old ? `${old} anteriores al ${fmtDay(cut)} no se importan` : ''].filter(Boolean);
   return { ok: true, msg: `Hevy: ${added} entrenos nuevos${extra.length ? ', ' + extra.join(', ') : ''}` };
 }
 const exMuscles = e => e.m && typeof e.m === 'object' && Object.keys(e.m).length ? e.m : e.n ? hevyMuscles(e.n) : ((EX[e.id] || {}).m || {});
@@ -2499,6 +2507,7 @@ const lsSet = (k, v) => { try { localStorage.setItem(KEY + k, J(v)); } catch (e)
 const BASE = lsGet('.base', {});           // última versión conocida de la nube, por sección
 const DIRTY = new Set(lsGet('.dirty', []));  // secciones cambiadas aquí y aún no subidas
 const PREV = {}; for (const sec in SECTIONS) PREV[sec] = J(pick(S, sec));
+if (BASE.salud && PREV.salud !== BASE.salud) DIRTY.add('salud'); // distinto de lo último visto en la nube (p. ej. una versión anterior no pudo subirlo): se sube fusionando, nunca se pisa
 const keepSync = () => { lsSet('.dirty', [...DIRTY]); lsSet('.base', BASE); };
 function markDirty() {
   for (const sec in SECTIONS) { const j = J(pick(S, sec)); if (j !== PREV[sec]) { PREV[sec] = j; DIRTY.add(sec); } }
@@ -2546,8 +2555,9 @@ function merge3(b, l, r) {
 }
 function takeRemote(sec, data) { for (const k of SECTIONS[sec]) if (data[k] !== null && data[k] !== undefined) S[k] = JSON.parse(J(data[k])); }
 function mergeRemote(sec, data) {
+  if (sec === 'salud') S.workouts = cleanWorkouts(S.workouts);
   const base = BASE[sec] ? JSON.parse(BASE[sec]) : {}, local = pick(S, sec), remote = pick(data, sec);
-  if (sec === 'salud') { if (base.workouts) base.workouts = cleanWorkouts(base.workouts); if (Array.isArray(remote.workouts)) remote.workouts = cleanWorkouts(remote.workouts); } // misma forma que aquí, para que la fusión compare igual con igual
+  if (sec === 'salud') { if (base.workouts) base.workouts = cleanWorkouts(base.workouts); if (Array.isArray(remote.workouts)) remote.workouts = cleanWorkouts(remote.workouts); } // las tres con la misma forma, para que la fusión compare igual con igual
   for (const k of SECTIONS[sec]) { if (remote[k] === null) continue; S[k] = merge3(base[k] === undefined ? null : base[k], local[k], remote[k]); }
 }
 function localCommit(rerender) { normalize(); try { localStorage.setItem(KEY, J(S)); } catch (e) {} for (const sec in SECTIONS) if (!DIRTY.has(sec)) PREV[sec] = J(pick(S, sec)); keepSync(); if (rerender) render(); }
@@ -2579,7 +2589,7 @@ function onRemote(snap) {
     }
     lsSet('.synced', true); SYNC.ready = true;
     localCommit(changed);
-    if (HEALTH_PENDING) { const t = HEALTH_PENDING; HEALTH_PENDING = null; importHealth(t, true, true); } // lo que trajo el Atajo antes de sincronizar no se pierde
+    if (HEALTH_PENDING) { const p = HEALTH_PENDING; HEALTH_PENDING = null; const h = S.health; if (!(h && h.lastToken === p.token && h.at !== p.at)) importHealth(p.t, true, true); } // lo que trajo el Atajo antes de sincronizar no se pierde (salvo que la nube ya lo tuviera)
     if (DIRTY.size) flush();
   } else {
     for (const doc of docs) {
@@ -2597,10 +2607,15 @@ async function archiveOld(sec, keepDays) { // mueve lo de hace más de keepDays 
   const cut = daysAgo(keepDays), moved = {}, drops = [];                // primero se escribe en el archivo y solo después se quita de aquí
   const put = (d, k, v) => { const mo = d.slice(0, 7); (moved[mo] = moved[mo] || {})[k] = v; };
   if (sec === 'diario') for (const k of ['days', 'moods']) for (const d of Object.keys(S[k])) if (d < cut) { put(d, k + '/' + d, S[k][d]); drops.push(() => { delete S[k][d]; }); }
-  if (sec === 'salud') { const ids = new Set(); for (const w of S.workouts) if (w.date < cut) { put(w.date, 'workouts/' + w.id, w); ids.add(w.id); } if (ids.size) drops.push(() => { S.workouts = S.workouts.filter(w => !ids.has(w.id)); }); }
+  if (sec === 'salud') { const ids = new Set(); for (const w of S.workouts) if (w.date < cut) { put(w.date, 'workouts/' + w.id, w); ids.add(w.id); }
+    if (ids.size) drops.push(() => { S.workouts = S.workouts.filter(w => !ids.has(w.id)); const hv = S.hevy || {}; S.hevy = { ...hv, archivedBefore: hv.archivedBefore > cut ? hv.archivedBefore : cut }; }); } // archivedBefore: lo anterior no se vuelve a importar de Hevy
   if (sec === 'dieta') for (const d of Object.keys(S.diet.eaten)) if (d < cut) drops.push(() => { delete S.diet.eaten[d]; });
   if (sec === 'chat' && S.chat.length > 20) drops.push(() => { S.chat = S.chat.slice(-20); });
-  for (const mo of Object.keys(moved)) { const ref = SYNC.db.doc(`valmon-archivo/${sec}-${mo}`), cur = await ref.get(); await ref.set({ ...(cur.exists ? cur.data() : {}), ...moved[mo] }); }
+  for (const mo of Object.keys(moved)) {
+    const ref = SYNC.db.doc(`valmon-archivo/${sec}-${mo}`), cur = await ref.get(), old = cur.exists ? cur.data() || {} : {};
+    for (const k of Object.keys(moved[mo])) if (old[k] && old[k].edited && !moved[mo][k].edited) delete moved[mo][k]; // un entreno corregido ya archivado no se pisa
+    await ref.set({ ...old, ...moved[mo] });
+  }
   drops.forEach(f => f()); if (drops.length) localCommit(false);
   return drops.length;
 }
@@ -2903,8 +2918,8 @@ document.addEventListener('click', e => {
     if (a === 'lgwarm' && st) st.warm = !st.warm;
     if (a === 'lgaddset' && e) { const last = e.log[e.log.length - 1] || {}; e.log.push({ kg: last.kg ?? '', reps: '', warm: false, done: false }); }
     if (a === 'lgdelset' && e && e.log.length > 1) e.log.pop();
-    if (a === 'lgdelex' && e) { if (e.log.some(x => x.done || x.kg !== '' || x.reps !== '')) { UI.confirmDel = 'ex-' + d.i; return render(); } DRAFT.ex.splice(+d.i, 1); UI.confirmDel = null; } // con series apuntadas, preguntar antes
-    if (a === 'lgdelexok' && e) { DRAFT.ex.splice(+d.i, 1); UI.confirmDel = null; }
+    if (a === 'lgdelex' && e) { if (e.log.some(x => x.done || x.kg !== '' || x.reps !== '')) { UI.confirmDel = 'ex-' + d.i + '-' + e.id; return render(); } DRAFT.ex.splice(+d.i, 1); UI.confirmDel = null; } // con series apuntadas, preguntar antes
+    if (a === 'lgdelexok' && e) { if (UI.confirmDel === 'ex-' + d.i + '-' + e.id) DRAFT.ex.splice(+d.i, 1); UI.confirmDel = null; }
     if (a === 'lgsave') return saveLog();
     if (a === 'lgdiscard') { UI.confirmDel = 'draft'; return render(); }
     if (a === 'lgdiscardok') { DRAFT = null; keepDraft(); UI.body = 'entrenos'; UI.confirmDel = null; UI.rest = null; return render(); }
