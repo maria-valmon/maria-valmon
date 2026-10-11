@@ -1249,6 +1249,23 @@ if (!S.rel || !S.topics) { // v2 → v3: Relaciones y Aprendizaje
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
 }
 if (!S.diet && S.days && S.days[today()]) S.days[today()].intake = 0; // antes era el total del día; ahora son extras fuera del menú
+/* Entrenos: forma compacta (las series solo llevan warm cuando son de calentamiento; los músculos de un ejercicio de Hevy
+   importado por CSV se sacan de su nombre) para que un año de registro quepa en la nube. También se usa al fusionar. */
+const HEVY_API_ID = /^hevy-[0-9a-f]{8}-[0-9a-f]{4}-/i; // los que trae la sincronización automática llevan el UUID de Hevy
+function cleanWorkouts(list) {
+  const ID = /^[A-Za-z0-9_-]{1,48}$/, DATE = /^\d{4}-\d{2}-\d{2}$/, isP = x => x && typeof x === 'object' && !Array.isArray(x);
+  const num = (x, d) => (x !== null && x !== '' && Number.isFinite(+x)) ? +x : d, str = (x, n) => typeof x === 'string' ? x.slice(0, n) : (x == null ? '' : String(x).slice(0, n));
+  const musc = m => { const o = {}; for (const [k, v] of Object.entries(isP(m) ? m : {})) if (Object.prototype.hasOwnProperty.call(MUSCLES, k) && Number.isFinite(+v)) o[k] = Math.max(0, Math.min(1, +v)); return o; };
+  return (Array.isArray(list) ? list : []).filter(w => isP(w) && DATE.test(w.date)).map(w => {
+    const csv = w.src === 'hevy' && !HEVY_API_ID.test(String(w.id));
+    return { id: typeof w.id === 'string' && ID.test(w.id) ? w.id : uid(), date: w.date, name: str(w.name, 80) || 'Entreno', ...(w.src === 'hevy' ? { src: 'hevy' } : {}), ...(w.edited === true ? { edited: true } : {}),
+      ...(typeof w.planId === 'string' && ID.test(w.planId) ? { planId: w.planId } : {}),
+      ex: (Array.isArray(w.ex) ? w.ex : []).filter(e => isP(e) && typeof e.id === 'string' && ID.test(e.id)).map(e => {
+        const log = (Array.isArray(e.log) ? e.log : []).filter(isP).slice(0, 30).map(x => ({ kg: Math.max(0, Math.min(1000, num(x.kg, 0))), reps: Math.max(0, Math.min(10000, Math.round(num(x.reps, 0)))), ...(x.warm ? { warm: true } : {}) })).filter(x => x.reps > 0);
+        const m = e.n && !csv ? musc(e.m) : {};
+        return { id: e.id, sets: log.length ? log.filter(x => !x.warm).length : Math.max(1, Math.min(20, num(e.sets, 1))), ...(log.length ? { log } : {}), ...(e.sc ? { sc: str(e.sc, 40) } : {}), ...(e.n ? { n: str(e.n, 80), ...(Object.keys(m).length ? { m } : {}) } : {}) }; }) };
+  });
+}
 function normalize() { // repara la forma de todos los datos: antiguos, de otro dispositivo o escritos por Claude
   const ID = /^[A-Za-z0-9_-]{1,48}$/, DATE = /^\d{4}-\d{2}-\d{2}$/;
   const str = (x, n = 2000) => typeof x === 'string' ? x.slice(0, n) : (x == null ? '' : String(x).slice(0, n));
@@ -1273,13 +1290,11 @@ function normalize() { // repara la forma de todos los datos: antiguos, de otro 
   S.checks = dict(S.checks, v => arr(v).filter(d => typeof d === 'string' && DATE.test(d)));
   S.weights = arr(S.weights).filter(w => isPlain(w) && DATE.test(w.date) && Number.isFinite(+w.kg)).map(w => ({ date: w.date, kg: +w.kg }));
   S.measures = arr(S.measures).filter(m => isPlain(m) && DATE.test(m.date)).map(m => { const o = { date: m.date }; for (const k of ['cintura', 'cadera', 'gluteo', 'muslo', 'brazo']) o[k] = num(m[k], null); return o; });
-  const musc = m => { const o = {}; for (const [k, v] of Object.entries(obj(m))) if (Object.prototype.hasOwnProperty.call(MUSCLES, k) && Number.isFinite(+v)) o[k] = Math.max(0, Math.min(1, +v)); return o; };
-  S.workouts = arr(S.workouts).filter(w => isPlain(w) && DATE.test(w.date)).map(w => ({ id: id(w.id), date: w.date, name: str(w.name, 80) || 'Entreno', ...(w.src === 'hevy' ? { src: 'hevy' } : {}), ...(typeof w.planId === 'string' && ID.test(w.planId) ? { planId: w.planId } : {}),
-    ex: arr(w.ex).filter(e => isPlain(e) && typeof e.id === 'string' && ID.test(e.id)).map(e => {
-      const log = arr(e.log).filter(isPlain).slice(0, 30).map(x => ({ kg: Math.max(0, Math.min(1000, num(x.kg, 0))), reps: Math.max(0, Math.min(10000, Math.round(num(x.reps, 0)))), warm: !!x.warm })).filter(x => x.reps > 0);
-      return { id: e.id, sets: log.length ? log.filter(x => !x.warm).length : Math.max(1, Math.min(20, num(e.sets, 1))), ...(log.length ? { log } : {}), ...(e.sc ? { sc: str(e.sc, 40) } : {}), ...(e.n ? { n: str(e.n, 80), m: musc(e.m) } : {}) }; }) }));
-  S.health = isPlain(S.health) && typeof S.health.lastToken === 'string' ? { lastToken: str(S.health.lastToken, 60), at: str(S.health.at, 40), date: date(S.health.date) } : null;
-  S.hevy = isPlain(S.hevy) ? { csvAt: str(S.hevy.csvAt, 40), apiAt: str(S.hevy.apiAt, 40) } : null;
+  S.workouts = cleanWorkouts(S.workouts);
+  S.health = isPlain(S.health) && typeof S.health.lastToken === 'string' ? { lastToken: str(S.health.lastToken, 60), at: str(S.health.at, 40), date: date(S.health.date),
+    max: dict(S.health.max, v => Array.isArray(v) && v.length === 2 && v.every(n => Number.isFinite(+n)) ? [Math.max(0, +v[0]), Math.max(0, +v[1])] : undefined) } : null; // max: lo más alto que mandó Salud cada día
+
+  S.hevy = isPlain(S.hevy) ? { csvAt: str(S.hevy.csvAt, 40), apiAt: str(S.hevy.apiAt, 40), deleted: arr(S.hevy.deleted).filter(x => typeof x === 'string' && ID.test(x)).slice(-400) } : null; // deleted: entrenos de Hevy borrados en la app, para no volver a traerlos
   S.days = dict(S.days, v => ({ steps: Math.max(0, num(obj(v).steps, 0)), intake: Math.max(0, num(obj(v).intake, 0)), ...(num(obj(v).active, 0) > 0 ? { active: Math.min(5000, num(obj(v).active, 0)) } : {}) }));
   S.moods = dict(S.moods, v => { v = obj(v); const m = num(v.m, 0); return { ...(m >= 1 && m <= 5 ? { m: Math.round(m) } : {}), energy: num(v.energy, 3), note: str(v.note, 2000) }; });
   S.projects = arr(S.projects).filter(isPlain).map(pr => ({ id: id(pr.id), name: str(pr.name, 120), area: str(pr.area, 60), status: oneOf(pr.status, ['idea', 'en marcha', 'pausado', 'hecho'], 'idea'), next: str(pr.next, 200),
@@ -1631,7 +1646,7 @@ function viewLog() {
     return `<section class="card logex"><div class="row between" style="align-items:flex-start"><div class="grow"><h3>${esc(e.n || x.n || e.id)}</h3>
         <p class="small muted">${e.sc ? `Objetivo ${esc(e.sc)}` : ''}${sg ? `${e.sc ? ' · ' : ''}Última vez: ${sg.last.sets.map(setTxt).join(', ')}` : ''}</p>
         ${sg ? `<p class="small" style="color:${sg.up ? 'var(--ok)' : 'var(--pink-soft)'}">${sg.up ? `¡Toca subir! Prueba ${kgTxt(sg.kg)} kg × ${sg.reps}` : sg.kg ? `Hoy: ${kgTxt(sg.kg)} kg, intenta ${sg.reps} ${unit}` : `Hoy: intenta ${sg.reps} ${unit}`}</p>` : ''}</div>
-        <button class="x" data-a="lgdelex" data-i="${i}" aria-label="Quitar ejercicio">×</button></div>
+        ${UI.confirmDel === 'ex-' + i ? `<div class="row" style="gap:8px"><button class="link" data-a="lgdelexok" data-i="${i}">Quitar</button><button class="link" data-a="nodel">No</button></div>` : `<button class="x" data-a="lgdelex" data-i="${i}" aria-label="Quitar ejercicio">×</button>`}</div>
       <div class="sets"><div class="set-row head"><span>Serie</span><span>kg</span><span>${unit}</span><span></span></div>
       ${e.legacy ? `<p class="small muted">Este entreno se guardó sin kg ni repeticiones (${e.legacy} series). Si no rellenas nada, se queda como estaba.</p>` : ''}
       ${e.log.map((s, j) => { const ph = sg ? { kg: sg.kg ? kgTxt(sg.kg) : '', reps: sg.reps } : { kg: '', reps: p.hi };
@@ -1667,7 +1682,9 @@ function saveLog() {
     if (metric(ws, weighted) > metric(prev, weighted) + 0.01 || Math.max(...ws.map(x => x.kg)) > Math.max(...prev.map(x => x.kg))) prs.push(exName(e));
   }
   const w = { id: D.id || uid(), date: D.date, name: (D.name || 'Entreno').slice(0, 80), ...(D.planId ? { planId: D.planId } : {}), ...(D.src ? { src: D.src } : {}), ex };
-  const i = S.workouts.findIndex(x => x.id === w.id); if (i >= 0) S.workouts[i] = w; else S.workouts.push(w);
+  const i = S.workouts.findIndex(x => x.id === w.id), prev = i >= 0 ? S.workouts[i] : null;
+  if (prev && prev.src === 'hevy') { const strip = x => J({ ...cleanWorkouts([x])[0], edited: undefined }); if (prev.edited || strip(prev) !== strip(w)) w.edited = true; } // corregido aquí: al reimportar de Hevy no se pisa
+  if (i >= 0) S.workouts[i] = w; else S.workouts.push(w);
   DRAFT = null; keepDraft(); UI.body = 'entrenos'; UI.rest = null; UI.confirmDel = null;
   commit(prs.length ? `¡Récord en ${prs.slice(0, 2).join(' y ')}${prs.length > 2 ? ' y más' : ''}!` : 'Entreno guardado');
 }
@@ -1710,26 +1727,39 @@ function exDetail(k) {
 const APP_URL = 'https://claude.ai/artifact/1umegouBvkUFTjAV2T88c4';
 /* Salud: el Atajo abre la app con #s_AAAA-MM-DD_PASOS_KCAL_PESOx10 (solo dígitos, guiones y guiones bajos) */
 const HEALTH_RE = /s_(\d{4}-\d{2}-\d{2})_([\d.,\s\u00a0]*)_([\d.,\s\u00a0]*)_?([\d.,]*)/;
-function importHealth(token, quiet) { // tolera puntos de miles, comas y campos vacíos
+function importHealth(token, quiet, again) { // tolera puntos de miles, comas y campos vacíos; again: volver a aplicarlo tras la primera sincronización
   const m = HEALTH_RE.exec(String(token || '').replace(/%20/g, ' ')); if (!m) { if (!quiet) toast('No reconozco esos datos de Salud'); return false; }
   const date = m[1], int = x => parseInt(String(x || '').replace(/\D/g, ''), 10) || 0;
   if (date > today() || date < daysAgo(60)) { if (!quiet) toast('La fecha de esos datos no cuadra'); return false; }
-  const steps = int(m[2]), kcal = int(m[3]), wRaw = String(m[4] || '').replace(',', '.');
+  const steps = Math.min(int(m[2]), 200000), kcal = Math.min(int(m[3]), 5000), wRaw = String(m[4] || '').replace(',', '.');
   let kg = 0; if (wRaw) { const v = parseFloat(wRaw); kg = /\./.test(wRaw) && v < 300 ? v : v >= 300 ? v / 10 : v; } // 673 → 67,3 kg; 67.3 o 67 → tal cual
   const token0 = `s_${date}_${steps}_${kcal}_${Math.round(kg * 10)}`;
-  if (S.health && S.health.lastToken === token0) { if (!quiet) toast('Esos datos ya estaban'); return false; }
+  if (!again && S.health && S.health.lastToken === token0) { if (!quiet) toast('Esos datos ya estaban'); return false; }
+  // pasos y kcal que manda Salud para un día solo suben: un enlace con menos que otro ya importado de ese día es antiguo (una pestaña vieja que se recarga)
+  const seen = (S.health && S.health.max) || {}, prev = seen[date];
+  if (prev && ((steps && steps < prev[0]) || (kcal && kcal < prev[1]))) { if (!quiet) toast('Ya tenías datos más recientes de ese día'); return false; }
   const day = S.days[date] = { ...(S.days[date] || {}) };
-  if (steps) day.steps = Math.min(steps, 200000); if (kcal) day.active = Math.min(kcal, 5000);
-  if (kg >= 30 && kg <= 300) { S.weights = S.weights.filter(x => x.date !== date); S.weights.push({ date, kg: Math.round(kg * 10) / 10 }); S.weights.sort((a, b) => a.date.localeCompare(b.date)); }
-  S.health = { lastToken: token0, at: new Date().toISOString(), date };
-  commit(`Salud: ${fmt(steps)} pasos${kcal ? ', ' + fmt(kcal) + ' kcal activas' : ''}${kg >= 30 && kg <= 300 ? ', ' + fmt(kg, 1) + ' kg' : ''}`);
+  if (steps) day.steps = steps; if (kcal) day.active = kcal;
+  const okKg = kg >= 30 && kg <= 300;
+  if (okKg) { S.weights = S.weights.filter(x => x.date !== date); S.weights.push({ date, kg: Math.round(kg * 10) / 10 }); S.weights.sort((a, b) => a.date.localeCompare(b.date)); }
+  const max = { ...seen, [date]: [Math.max(steps, prev ? prev[0] : 0), Math.max(kcal, prev ? prev[1] : 0)] };
+  S.health = { lastToken: token0, at: new Date().toISOString(), date, max: Object.fromEntries(Object.entries(max).sort((a, b) => a[0].localeCompare(b[0])).slice(-14)) };
+  commit(again ? null : `Salud: ${fmt(steps)} pasos${kcal ? ', ' + fmt(kcal) + ' kcal activas' : ''}${okKg ? ', ' + fmt(kg, 1) + ' kg' : ''}`);
   return true;
 }
-function checkHash() { try { if (HEALTH_RE.test(location.hash)) importHealth(location.hash, true); } catch (e) {} }
+let HEALTH_PENDING = null; // si llega antes de comparar con la nube, se vuelve a aplicar después (un dispositivo nuevo toma lo de la nube)
+function checkHash() {
+  try {
+    if (!HEALTH_RE.test(location.hash)) return;
+    const t = location.hash; if (!SYNC.ready) HEALTH_PENDING = t;
+    importHealth(t, true);
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} // que recargar la página no lo vuelva a importar
+  } catch (e) {}
+}
 window.addEventListener('hashchange', checkHash);
 
 /* Hevy: mapa de ejercicio → músculos por palabras clave (inglés y español), de lo más específico a lo más general */
-const HEVY_RULES = [
+const HEVY_RULES = [ // se usa la primera que encaja: lo específico (tríceps, remo al mentón, máquina de remo) va antes que lo general (patada, jalón, remo, banco)
   [/side plank|plancha lateral|pallof|russian twist|oblique|oblicu|woodchop|leñador/i, { oblicuos: 1, abdomen: .5 }],
   [/plank|plancha|crunch|abdominal|sit.?up|leg raise|elevaci[oó]n de piernas|dead ?bug|ab wheel|rueda|hollow/i, { abdomen: 1 }],
   [/hip thrust|glute bridge|puente de gl[uú]teo|empuje de cadera/i, { gluteos: 1, isquios: .4 }],
@@ -1738,13 +1768,16 @@ const HEVY_RULES = [
   [/bulgarian|b[uú]lgara|split squat|lunge|zancada|step.?up|subida al caj[oó]n/i, { gluteos: 1, cuadriceps: .7, aductores: .3 }],
   [/hip abduct|abduct|abducci[oó]n|abductora/i, { gluteos: 1 }],
   [/adduct|aducci[oó]n|aductora/i, { aductores: 1 }],
-  [/kickback|patada|glute isolat|pendulum/i, { gluteos: 1, isquios: .3 }],
+  [/tricep|tr[ií]ceps|skull ?crusher|rompecr[aá]neos|pushdown|\bdips?\b|\bfondos?\b/i, { triceps: 1 }],
+  [/kickback|patada|donkey|glute isolat/i, { gluteos: 1, isquios: .3 }],
   [/hyperextension|back extension|hiperextensi|reverse hyper/i, { gluteos: .8, lumbar: .5, isquios: .5 }],
   [/leg curl|lying curl|seated curl|hamstring curl|curl femoral|curl de isquio|nordic/i, { isquios: 1 }],
   [/leg extension|extensi[oó]n de (cu[aá]driceps|piernas)/i, { cuadriceps: 1 }],
   [/calf|gemelo|pantorrilla|soleo/i, { gemelos: 1 }],
   [/leg press|prensa/i, { cuadriceps: 1, gluteos: .5, aductores: .3 }],
-  [/squat|sentadilla|hack|goblet|belt squat/i, { cuadriceps: 1, gluteos: .6, aductores: .3 }],
+  [/squat|sentadilla|hack|goblet|pendulum|p[eé]ndulo/i, { cuadriceps: 1, gluteos: .6, aductores: .3 }],
+  [/upright row|remo al ment[oó]n|remo vertical/i, { hombros: 1, trapecio: .6 }],
+  [/treadmill|cinta|bike|bici|cycling|elliptical|el[ií]ptica|stair|escaler|\bwalk|camin|\brun|carrera|rowing machine|rower|erg[oó]metro|ergometer|cardio|hyrox|ski ?erg|assault/i, {}],
   [/pulldown|jal[oó]n|pull.?up|dominada|chin.?up/i, { espalda: 1, biceps: .5 }],
   [/face pull|rear delt|reverse fly|p[aá]jaros|deltoides posterior/i, { hombros: 1, trapecio: .5 }],
   [/row|remo/i, { espalda: 1, trapecio: .3, biceps: .3 }],
@@ -1752,9 +1785,7 @@ const HEVY_RULES = [
   [/shoulder press|overhead press|military|arnold|press militar|press de hombro|press hombro/i, { hombros: 1, triceps: .4 }],
   [/bench|chest press|press de (banca|pecho)|press banca|push.?up|flexi[oó]n|fly|aperturas|pec deck|cruce de poleas|crossover/i, { pecho: 1, triceps: .5, hombros: .3 }],
   [/shrug|encogimiento/i, { trapecio: 1 }],
-  [/tricep|tr[ií]ceps|skull|pushdown|jal[oó]n de tr[ií]ceps|dip|fondo|kick ?back de tr/i, { triceps: 1 }],
   [/curl/i, { biceps: 1 }],
-  [/treadmill|cinta|bike|bici|cycling|elliptical|el[ií]ptica|stair|escaler|escaladora|walk|camin|run|carrera|row(ing)? machine|cardio|hyrox|ski ?erg|assault/i, {}],
 ];
 const HEVY_TO_EX = [ // ejercicios de Hevy que son los mismos del plan: así su progresión se ve junta
   [/side plank|plancha lateral/i, null], [/single.?leg|one.?leg|unilateral|una pierna/i, null], [/bodyweight|peso corporal/i, null], [/smith|multipower/i, null], [/glute bridge|puente de gl[uú]teo/i, null],
@@ -1791,7 +1822,13 @@ function hevyDate(s) { // "10 Oct 2026, 18:05", "2026-10-10 18:05:00", "2026-10-
   m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s); if (m) return `${m[3]}-${pad(+m[2])}-${pad(+m[1])}`;
   return null;
 }
+function hevyTime(s) { // hora del start_time ("…, 18:05", "6:05 PM", "T18:05:00"); el id no depende del título ni del idioma del texto
+  const m = /(\d{1,2})[:.](\d{2})(?::\d{2})?\s*([ap]\.?\s?m\.?)?/i.exec(String(s || '').replace(/^\d{4}-\d{2}-\d{2}/, '')); if (!m) return '';
+  let h = +m[1]; const ap = (m[3] || '').toLowerCase(); if (ap.startsWith('p') && h < 12) h += 12; if (ap.startsWith('a') && h === 12) h = 0;
+  return `${pad(h)}:${m[2]}`;
+}
 function hashId(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+const hevySig = w => 'x' + String(w.date).replace(/-/g, '') + '-' + hashId(String(w.name || '').toLowerCase()); // firma de un entreno de Hevy borrado (igual en tools/hevy-sync.mjs)
 const UNIT_OF = { cinta: 'min', granjero: 'm', plancha: 'seg' }; // ejercicios del plan que no se miden en repeticiones
 function hevyAmount(exId, reps, secs, meters) { // pasa lo de Hevy a la unidad del plan
   const u = UNIT_OF[exId];
@@ -1811,8 +1848,8 @@ function importHevyCSV(text) {
   const W = new Map();
   for (const r of rows.slice(1)) {
     const start = r[iS], date = hevyDate(start); if (!date) continue;
-    const title = (iT >= 0 ? r[iT] : '') || 'Entreno de Hevy', key = start + '|' + title;
-    if (!W.has(key)) W.set(key, { id: 'hevy-' + hashId(key), date, name: title.slice(0, 80), ex: new Map() });
+    const title = (iT >= 0 ? r[iT] : '') || 'Entreno de Hevy', time = hevyTime(start), key = time ? date + ' ' + time : start + '|' + title;
+    if (!W.has(key)) W.set(key, { id: 'hevy-' + hashId(key), old: 'hevy-' + hashId(start + '|' + title), date, name: title.slice(0, 80), ex: new Map() });
     const name = (r[iE] || '').trim().slice(0, 80); if (!name) continue;
     const exId = hevyToEx(name), id = exId || 'hv-' + hashId(name.toLowerCase());
     const amount = hevyAmount(exId, numCell(r, iR), numCell(r, iDur), numCell(r, iDist) * (miles ? 1609.34 : 1000)); if (!amount) continue;
@@ -1820,16 +1857,25 @@ function importHevyCSV(text) {
     w.ex.get(id).log.push({ kg: Math.round(numCell(r, iKg) / (lbs ? 2.20462 : 1) * 10) / 10, reps: amount, warm: iST >= 0 && /warm/i.test(r[iST] || '') });
   }
   if (!W.size) return { ok: false, msg: 'No he reconocido ninguna fecha en el archivo. ¿Es la exportación de entrenos de Hevy?' };
-  let added = 0, updated = 0;
+  let added = 0, updated = 0, kept = 0, gone = 0, old = 0;
+  const hv = S.hevy || {}, deleted = new Set(hv.deleted || []), cut = daysAgo(400);
   for (const w of W.values()) {
-    const wo = { id: w.id, date: w.date, name: w.name, src: 'hevy', ex: [...w.ex.values()].map(e => { const log = e.log.slice(0, 30); return { ...e, sets: log.filter(x => !x.warm).length, log }; }).filter(e => e.sets > 0) };
-    if (!wo.ex.length) continue;
-    const i = S.workouts.findIndex(x => x.id === wo.id); if (i >= 0) { S.workouts[i] = wo; updated++; } else { S.workouts.push(wo); added++; }
+    const wo = cleanWorkouts([{ id: w.id, date: w.date, name: w.name, src: 'hevy', ex: [...w.ex.values()].map(e => { const log = e.log.slice(0, 30); return { ...e, sets: log.filter(x => !x.warm).length, log }; }).filter(e => e.sets > 0) }])[0];
+    if (!wo || !wo.ex.length) continue;
+    if (deleted.has(w.id) || deleted.has(w.old)) { gone++; continue; }    // lo borraste en la app: no vuelve
+    let i = S.workouts.findIndex(x => x.id === w.id); if (i < 0) i = S.workouts.findIndex(x => x.id === w.old); // importado con la versión anterior del id
+    if (i < 0 && w.date < cut) { old++; continue; }                         // lo de hace más de 400 días va al archivo, no a la app
+    if (i < 0) { S.workouts.push(wo); added++; continue; }
+    const cur = S.workouts[i];
+    if (cur.edited) { if (cur.id !== w.id) S.workouts[i] = { ...cur, id: w.id }; kept++; continue; } // lo corregiste en la app: manda tu versión
+    if (J({ ...cur, id: w.id }) !== J(wo)) updated++;
+    S.workouts[i] = wo;
   }
-  S.hevy = { ...(S.hevy || {}), csvAt: new Date().toISOString() };
-  return { ok: true, msg: `Hevy: ${added} entrenos nuevos${updated ? `, ${updated} actualizados` : ''}` };
+  S.hevy = { ...hv, csvAt: new Date().toISOString() };
+  const extra = [updated ? `${updated} actualizados` : '', kept ? `${kept} que corregiste aquí se quedan como los dejaste` : '', gone ? `${gone} que borraste no vuelven` : '', old ? `${old} de hace más de 400 días no se importan` : ''].filter(Boolean);
+  return { ok: true, msg: `Hevy: ${added} entrenos nuevos${extra.length ? ', ' + extra.join(', ') : ''}` };
 }
-const exMuscles = e => e.m && typeof e.m === 'object' ? e.m : ((EX[e.id] || {}).m || {});
+const exMuscles = e => e.m && typeof e.m === 'object' && Object.keys(e.m).length ? e.m : e.n ? hevyMuscles(e.n) : ((EX[e.id] || {}).m || {});
 const exName = e => e.n || (EX[e.id] || {}).n || e.id;
 function integrations() {
   const h = S.health, hv = S.workouts.filter(w => w.src === 'hevy'), last = hv.map(w => w.date).sort().pop();
@@ -1971,6 +2017,7 @@ function viewProfile() {
     ${SYNC.state === 'local' ? '<p class="small muted">Ahora mismo tus datos solo están en este dispositivo. Se conectan cuando abres la app desde Claude.</p>'
       : `<p class="small muted">Tus datos se guardan en la base de datos privada de esta app en tu cuenta de Claude: solo tú (y Claude, cuando se lo pides) podéis verlos. Así se sincronizan entre tus dispositivos y Claude puede leer y actualizar tus proyectos, relaciones, aprendizaje, salud y dieta cuando le preguntes.${SYNC.at ? ` Última sincronización: ${pad(SYNC.at.getHours())}:${pad(SYNC.at.getMinutes())}.` : ''}</p>`}
     ${SYNC.state === 'error' && SYNC.err ? `<p class="small" style="color:var(--warn)">${esc(SYNC.err)}</p>` : ''}
+    ${SYNC.big.size ? `<p class="small" style="color:var(--warn)">Hay datos que no caben en la nube (${[...SYNC.big].map(x => ({ salud: 'salud y entrenos', diario: 'diario', dieta: 'dieta', chat: 'chat', relaciones: 'relaciones', lectura: 'lectura', aprendizaje: 'aprendizaje', proyectos: 'proyectos' })[x] || x).join(', ')}). Siguen guardados en este dispositivo, pero no llegan a tus otros dispositivos ni a Claude.</p>` : ''}
     ${backupInfo()}
     <p class="small muted">Dentro de la app tienes el chat con Claude en Inicio. Fuera, en una conversación con Claude que pueda abrir artefactos, pásale el enlace de la app y pídele lo que necesites.</p></section>`;
 }
@@ -2488,6 +2535,7 @@ function merge3(b, l, r) {
 function takeRemote(sec, data) { for (const k of SECTIONS[sec]) if (data[k] !== null && data[k] !== undefined) S[k] = JSON.parse(J(data[k])); }
 function mergeRemote(sec, data) {
   const base = BASE[sec] ? JSON.parse(BASE[sec]) : {}, local = pick(S, sec), remote = pick(data, sec);
+  if (sec === 'salud') { if (base.workouts) base.workouts = cleanWorkouts(base.workouts); if (Array.isArray(remote.workouts)) remote.workouts = cleanWorkouts(remote.workouts); } // misma forma que aquí, para que la fusión compare igual con igual
   for (const k of SECTIONS[sec]) { if (remote[k] === null) continue; S[k] = merge3(base[k] === undefined ? null : base[k], local[k], remote[k]); }
 }
 function localCommit(rerender) { normalize(); try { localStorage.setItem(KEY, J(S)); } catch (e) {} for (const sec in SECTIONS) if (!DIRTY.has(sec)) PREV[sec] = J(pick(S, sec)); keepSync(); if (rerender) render(); }
@@ -2519,6 +2567,7 @@ function onRemote(snap) {
     }
     lsSet('.synced', true); SYNC.ready = true;
     localCommit(changed);
+    if (HEALTH_PENDING) { const t = HEALTH_PENDING; HEALTH_PENDING = null; importHealth(t, true, true); } // lo que trajo el Atajo antes de sincronizar no se pierde
     if (DIRTY.size) flush();
   } else {
     for (const doc of docs) {
@@ -2532,18 +2581,16 @@ function onRemote(snap) {
   }
   SYNC.live = true; SYNC.retries = 0; if (SYNC.state !== 'error') SYNC.state = 'ok'; SYNC.at = new Date();
 }
-async function archiveOld(sec) { // mueve lo de hace más de 400 días a documentos de archivo por año (fuera de la colección que se sincroniza)
-  const cut = daysAgo(400), moved = {};
-  const put = (y, k, v) => { (moved[y] = moved[y] || {})[k] = v; };
-  if (sec === 'diario') for (const k of ['days', 'moods']) for (const d of Object.keys(S[k])) if (d < cut) { put(d.slice(0, 4), k + '/' + d, S[k][d]); delete S[k][d]; }
-  if (sec === 'salud') S.workouts = S.workouts.filter(w => { if (w.date < cut) { put(w.date.slice(0, 4), 'workouts/' + w.id, w); return false; } return true; });
-  if (sec === 'dieta') for (const d of Object.keys(S.diet.eaten)) if (d < cut) delete S.diet.eaten[d];
-  if (sec === 'chat') S.chat = S.chat.slice(-20);
-  for (const y of Object.keys(moved)) {
-    const ref = SYNC.db.doc(`valmon-archivo/${sec}-${y}`), cur = await ref.get();
-    await ref.set({ ...(cur.exists ? cur.data() : {}), ...moved[y] });
-  }
-  localCommit(false);
+async function archiveOld(sec, keepDays) { // mueve lo de hace más de keepDays días a documentos de archivo por mes (fuera de la colección que se sincroniza)
+  const cut = daysAgo(keepDays), moved = {}, drops = [];                // primero se escribe en el archivo y solo después se quita de aquí
+  const put = (d, k, v) => { const mo = d.slice(0, 7); (moved[mo] = moved[mo] || {})[k] = v; };
+  if (sec === 'diario') for (const k of ['days', 'moods']) for (const d of Object.keys(S[k])) if (d < cut) { put(d, k + '/' + d, S[k][d]); drops.push(() => { delete S[k][d]; }); }
+  if (sec === 'salud') { const ids = new Set(); for (const w of S.workouts) if (w.date < cut) { put(w.date, 'workouts/' + w.id, w); ids.add(w.id); } if (ids.size) drops.push(() => { S.workouts = S.workouts.filter(w => !ids.has(w.id)); }); }
+  if (sec === 'dieta') for (const d of Object.keys(S.diet.eaten)) if (d < cut) drops.push(() => { delete S.diet.eaten[d]; });
+  if (sec === 'chat' && S.chat.length > 20) drops.push(() => { S.chat = S.chat.slice(-20); });
+  for (const mo of Object.keys(moved)) { const ref = SYNC.db.doc(`valmon-archivo/${sec}-${mo}`), cur = await ref.get(); await ref.set({ ...(cur.exists ? cur.data() : {}), ...moved[mo] }); }
+  drops.forEach(f => f()); if (drops.length) localCommit(false);
+  return drops.length;
 }
 async function flush() {
   if (!SYNC.db || !SYNC.ready) return;
@@ -2555,14 +2602,14 @@ async function flush() {
       try {
         const cur = await ref.get(); // leer antes de escribir: si alguien lo cambió, fusionar en vez de pisarlo
         if (cur.exists) { const data = cur.data() || {}, rj = J(pick(data, sec)); if (rj !== BASE[sec]) { mergeRemote(sec, data); normalize(); BASE[sec] = rj; merged = true; } }
-        if (J(pick(S, sec)).length > 200000) await archiveOld(sec);
+        for (let keep = 400; keep >= 90 && J(pick(S, sec)).length > 200000; keep -= 60) await archiveOld(sec, keep); // si no cabe, se archiva cada vez más reciente
         const body = pick(S, sec), j = J(body);
-        if (j.length > 250000) { SYNC.big.add(sec); DIRTY.delete(sec); keepSync(); continue; }
+        if (j.length > 250000) { SYNC.big.add(sec); keepSync(); continue; } // sigue pendiente: lo que llegue de fuera se fusiona con esto, nunca lo pisa
         await ref.set({ ...JSON.parse(j), _at: new Date().toISOString() });
         BASE[sec] = j; PREV[sec] = J(pick(S, sec)); if (PREV[sec] === j) DIRTY.delete(sec); SYNC.big.delete(sec); keepSync();
         SYNC.state = 'ok'; SYNC.err = null; SYNC.at = new Date();
       } catch (e) {
-        if (e && e.code === 'invalid_argument') { SYNC.big.add(sec); DIRTY.delete(sec); keepSync(); continue; } // esa sección no cabe: el resto sigue
+        if (e && e.code === 'invalid_argument') { SYNC.big.add(sec); keepSync(); continue; } // esa sección no cabe: el resto sigue (y esta queda pendiente)
         if (e && (e.code === 'revoked' || e.code === 'not_granted' || e.code === 'capability_disabled' || e.code === 'capability_removed')) { SYNC.db = null; SYNC.state = 'local'; break; }
         SYNC.state = 'error'; SYNC.err = e && e.code === 'quota_exceeded' ? 'La nube de la app está llena: borra cosas antiguas.' : 'Sin conexión: se subirá cuando vuelva.';
         SYNC.retries++; clearTimeout(SYNC.timer); SYNC.timer = setTimeout(flush, Math.min(60000, 2000 * 2 ** Math.min(5, SYNC.retries)) + Math.random() * 1000);
@@ -2719,7 +2766,7 @@ function sheet() {
     <h3>Importar a mano (sin Hevy Pro)</h3>
     <ol class="qs"><li>En Hevy: <b>Perfil → Ajustes → Exportar e importar datos → Exportar datos → Exportar entrenos</b> (en inglés: Settings → Export &amp; Import Data → Export Data → Export Workouts).</li>
       <li>Guarda el archivo (suele llamarse <i>workout_data.csv</i>) en Archivos.</li>
-      <li>En Valmon, Cuerpo → Resumen → Conexiones → <b>Importar CSV</b>. Puedes repetirlo cuando quieras: no se duplica nada.</li></ol>
+      <li>En Valmon, Cuerpo → Resumen → Conexiones → <b>Importar CSV</b>. Puedes repetirlo cuando quieras: no se duplica nada, lo que corrijas en Valmon se queda como lo dejaste y lo que borres no vuelve.</li></ol>
     <h3>Automático cada día (con Hevy Pro)</h3>
     <p class="small">Claude puede traer tus entrenos de Hevy cada noche con la API de Hevy, que solo funciona con Hevy Pro. Para activarlo:</p>
     <ol class="qs"><li>Crea tu clave en la web de Hevy: <a class="ext" href="https://hevy.com/settings?developer" target="_blank" rel="noopener noreferrer">hevy.com/settings?developer</a>.</li>
@@ -2832,18 +2879,20 @@ document.addEventListener('click', e => {
   if (a === 'mood') { S.moods[today()] = { ...(S.moods[today()] || {}), m: +d.v }; return commit('Guardado'); }
   if (a === 'task') { const p = S.projects.find(x => x.id === d.p); const t = p.tasks.find(x => x.id === d.id); t.done = !t.done; return commit(); }
   if (a === 'delw') { UI.confirmDel = 'w-' + d.id; return render(); }
-  if (a === 'delwok') { S.workouts = S.workouts.filter(w => w.id !== d.id); UI.confirmDel = null; return commit('Entreno borrado'); }
+  if (a === 'delwok') { const w = S.workouts.find(x => x.id === d.id); if (w && w.src === 'hevy') S.hevy = { ...(S.hevy || {}), deleted: [...((S.hevy || {}).deleted || []), w.id, hevySig(w)] }; S.workouts = S.workouts.filter(x => x.id !== d.id); UI.confirmDel = null; return commit('Entreno borrado'); } // de Hevy: se recuerdan su id y su firma (día + nombre) para que no vuelva al reimportar ni con la sincronización automática
   if (a === 'startlog') { if (d.resume && DRAFT) { UI.tab = 'cuerpo'; UI.body = 'log'; window.scrollTo(0, 0); return render(); } return startLog(d.plan || null, null); }
   if (a === 'lgkeep') { UI.switchTo = null; return render(); }
   if (a === 'lgswitch') { const t = UI.switchTo; UI.switchTo = null; if (t) return startLog(t.planId, t.editId, true); return render(); }
   if (a === 'editw') return startLog(null, d.id);
   if (DRAFT && a.startsWith('lg')) {
     const e = DRAFT.ex[+d.i], st = e && e.log[+d.j];
+    if (a !== 'lgdelex' && a !== 'lgdelexok' && String(UI.confirmDel).startsWith('ex-')) UI.confirmDel = null;
     if (a === 'lgdone' && st) { if (!st.done) { const ph = document.getElementById(`lg-${d.i}-${d.j}-kg`), pr = document.getElementById(`lg-${d.i}-${d.j}-r`); if (st.kg === '' && ph && ph.placeholder) st.kg = +ph.placeholder.replace(',', '.') || ''; if (st.reps === '' && pr && pr.placeholder) st.reps = +pr.placeholder || ''; if (!st.reps) { toast('Pon las repeticiones'); return; } st.done = true; if (!st.warm) UI.rest = Date.now() + restFor(e) * 1000; } else st.done = false; }
     if (a === 'lgwarm' && st) st.warm = !st.warm;
     if (a === 'lgaddset' && e) { const last = e.log[e.log.length - 1] || {}; e.log.push({ kg: last.kg ?? '', reps: '', warm: false, done: false }); }
     if (a === 'lgdelset' && e && e.log.length > 1) e.log.pop();
-    if (a === 'lgdelex' && e) DRAFT.ex.splice(+d.i, 1);
+    if (a === 'lgdelex' && e) { if (e.log.some(x => x.done || x.kg !== '' || x.reps !== '')) { UI.confirmDel = 'ex-' + d.i; return render(); } DRAFT.ex.splice(+d.i, 1); UI.confirmDel = null; } // con series apuntadas, preguntar antes
+    if (a === 'lgdelexok' && e) { DRAFT.ex.splice(+d.i, 1); UI.confirmDel = null; }
     if (a === 'lgsave') return saveLog();
     if (a === 'lgdiscard') { UI.confirmDel = 'draft'; return render(); }
     if (a === 'lgdiscardok') { DRAFT = null; keepDraft(); UI.body = 'entrenos'; UI.confirmDel = null; UI.rest = null; return render(); }
@@ -2861,7 +2910,7 @@ document.addEventListener('change', e => {
   const el = e.target;
   if (el.dataset.a === 'pstatus') { S.projects.find(p => p.id === el.dataset.id).status = el.value; commit(); document.getElementById(el.id)?.focus(); }
   if (el.dataset.a === 'club') { S.profile.club = el.value; save(); el.closest('section').outerHTML = gymCard(); document.getElementById('f-club').focus(); }
-  if (el.id === 'lg-add' && el.value && DRAFT) { const p = parseScheme('3×8-12'); DRAFT.ex.push({ id: el.value, sc: '', log: Array.from({ length: p.sets }, () => ({ kg: '', reps: '', warm: false, done: false })) }); keepDraft(); render(); return; }
+  if (el.id === 'lg-add' && el.value && DRAFT) { const pe = ((PLAN.find(x => x.id === DRAFT.planId) || {}).ex || []).find(([id]) => id === el.value), sc = pe ? pe[1] : '', p = parseScheme(sc || '3×8-12'); DRAFT.ex.push({ id: el.value, sc, log: Array.from({ length: p.sets }, () => ({ kg: '', reps: '', warm: false, done: false })) }); keepDraft(); render(); return; } // si es del plan del día, vuelve con su esquema
   if (el.id === 'hevy-file' && el.files && el.files[0]) { const fr = new FileReader(); fr.onload = () => { const r = importHevyCSV(String(fr.result || '')); if (r.ok) commit(r.msg); else toast(r.msg); }; fr.onerror = () => toast('No he podido leer el archivo'); fr.readAsText(el.files[0]); el.value = ''; }
   if (el.dataset.a === 'relstatus') { S.rel.find(x => x.id === el.dataset.id).status = el.value; save(); toast('Guardado'); }
   if (el.id === 'l-book') { UI.sheet = { type: 'learning', book: el.value }; render(); }

@@ -6,7 +6,8 @@
 //
 // El primer paso usa GET /v1/workouts/events (cambios y borrados desde una fecha) y GET /v1/exercise_templates
 // (grupo muscular de cada ejercicio). El segundo toma el documento valmon/salud de la app y añade, actualiza o
-// borra los entrenos de Hevy sin tocar el resto. Las reglas de ejercicios son las mismas que usa la app
+// borra los entrenos de Hevy sin tocar el resto. Respeta lo que hiciste en la app: un entreno de Hevy que corregiste
+// allí (edited) no se pisa ni se borra, y uno que borraste allí (hevy.deleted) no vuelve. Las reglas de ejercicios son las mismas que usa la app
 // (app/valmon.html: HEVY_TO_EX y hashId); si cambian allí, cámbialas aquí.
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -28,6 +29,7 @@ const HEVY_TO_EX = [
 ];
 const hevyToEx = name => { for (const [re, id] of HEVY_TO_EX) if (re.test(name)) return id; return null; };
 const hashId = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
+const hevySig = w => 'x' + String(w.date).replace(/-/g, '') + '-' + hashId(String(w.name || '').toLowerCase()); // igual que en la app
 const MUSCLE = { glutes: 'gluteos', abductors: 'gluteos', hamstrings: 'isquios', quadriceps: 'cuadriceps', adductors: 'aductores', calves: 'gemelos', lats: 'espalda',
   upper_back: 'espalda', traps: 'trapecio', shoulders: 'hombros', chest: 'pecho', biceps: 'biceps', triceps: 'triceps', abdominals: 'abdomen', lower_back: 'lumbar' };
 const localDate = iso => new Intl.DateTimeFormat('sv-SE', { timeZone: process.env.TZ_VALMON || 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
@@ -44,7 +46,7 @@ function convert(w, templates) {
   const byId = new Map();
   for (const e of w.exercises || []) {
     const title = String(e.title || 'Ejercicio').slice(0, 80), exId = hevyToEx(title), id = exId || 'hv-' + hashId(title.toLowerCase());
-    const log = (e.sets || []).map(s => ({ kg: Math.round((s.weight_kg || 0) * 10) / 10, reps: amount(exId, s), warm: s.type === 'warmup' })).filter(s => s.reps > 0);
+    const log = (e.sets || []).map(s => ({ kg: Math.round((s.weight_kg || 0) * 10) / 10, reps: amount(exId, s), ...(s.type === 'warmup' ? { warm: true } : {}) })).filter(s => s.reps > 0);
     if (!log.length) continue;
     if (!byId.has(id)) {
       const m = {}, t = templates.get(e.exercise_template_id);
@@ -90,9 +92,13 @@ function mergeMode() {
   const hevy = JSON.parse(readFileSync(hevyPath, 'utf8'));
   const workouts = Array.isArray(doc.workouts) ? doc.workouts : [];
   const del = new Set(hevy.deletes || []), up = new Map((hevy.upserts || []).map(w => [w.id, w]));
+  const tomb = new Set((doc.hevy && Array.isArray(doc.hevy.deleted) && doc.hevy.deleted) || []), edited = workouts.filter(w => w.edited);
   // un entreno importado antes por CSV (mismo día y nombre) se sustituye por el de la API, para no tenerlo dos veces
   const fromCSV = w => w.src === 'hevy' && !/^hevy-[0-9a-f]{8}-[0-9a-f]{4}-/i.test(w.id); // los de la API llevan el UUID de Hevy
-  const dupCSV = w => fromCSV(w) && [...up.values()].some(u => u.date === w.date && u.name === w.name);
+  const sameAs = (a, b) => a.date === b.date && a.name === b.name;
+  for (const [id, u] of up) if (tomb.has(id) || tomb.has(hevySig(u)) || edited.some(w => w.id === id || (fromCSV(w) && sameAs(w, u)))) up.delete(id); // borrado o corregido en la app: manda la app
+  for (const id of [...del]) if (edited.some(w => w.id === id)) del.delete(id);
+  const dupCSV = w => fromCSV(w) && !w.edited && [...up.values()].some(u => sameAs(u, w));
   const kept = workouts.filter(w => !del.has(w.id) && !up.has(w.id) && !dupCSV(w));
   doc.workouts = [...kept, ...up.values()].sort((a, b) => a.date.localeCompare(b.date));
   doc.hevy = { ...(doc.hevy || {}), apiAt: hevy.until || new Date().toISOString() };
