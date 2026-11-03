@@ -92,6 +92,16 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1
 .setno.warm { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, var(--line)); }
 .rest { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--pink) 16%, var(--surface-2)); }
 .rest b { font-family: var(--display); font-size: 22px; margin-right: auto; }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cal .wd { font-size: 11px; color: var(--muted); text-align: center; font-weight: 700; text-transform: uppercase; }
+.cd { aspect-ratio: 1; display: grid; place-items: center; border-radius: 10px; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--fg); background: var(--surface-2); border: 2px solid transparent; position: relative; padding: 0; font-family: inherit; }
+.cd.done { background: var(--c); color: #0b0a0c; font-weight: 800; cursor: pointer; }
+.cd.plan { background: transparent; border: 2px dashed var(--c); }
+.cd.miss { background: transparent; color: var(--muted); border: 2px dashed var(--line); }
+.cd.today { outline: 2px solid var(--fg); outline-offset: 1px; }
+.cd i { position: absolute; top: 1px; right: 4px; font-size: 9px; font-style: normal; font-weight: 800; }
+.dot { width: 12px; height: 12px; border-radius: 4px; background: var(--c); display: inline-block; flex-shrink: 0; }
+.dot.plan { background: transparent; border: 2px dashed var(--c); }
 .log-head { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
 .chip.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 .meal.done { border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
@@ -2045,8 +2055,37 @@ function integrations() {
       <p class="small muted">${hv.length ? `Último entreno importado: ${fmtDay(last)}. Cuentan en tu mapa de músculos.` : 'Importa tus entrenos de Hevy y cuentan en tu mapa de músculos y en tus calorías.'}</p>
       <div class="row wrap"><label class="btn sm" style="cursor:pointer">Importar CSV<input type="file" id="hevy-file" accept=".csv,text/csv" hidden></label><button class="btn sm quiet" data-a="sheet" data-s="hevy">Automático</button></div></div></div></section>`;
 }
+/* Calendario de entrenos: lo hecho, relleno con el color de su tipo; lo que toca según el plan, con el borde de ese color */
+const WT_COLOR = { p1: '#ff4fa3', p2: '#5ab8ff', p3: '#b98bff', p4: '#ffb23f', otro: '#7fd6c8' };
+const normName = x => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const wType = w => (w.planId && WT_COLOR[w.planId] ? w.planId : (PLAN.find(p => normName(p.name) === normName(w.name)) || {}).id) || 'otro';
+const planDow = () => Object.fromEntries(PLAN.map(p => [DOW.indexOf(p.day.toLowerCase()), p.id])); // lunes → Glúteo · fuerza, martes → Torso... (DOW se define más abajo)
+function calendarCard() {
+  const t = today(), m = UI.calMonth || t.slice(0, 7), [y, mo] = m.split('-').map(Number), ndays = new Date(y, mo, 0).getDate(), lead = dowOf(`${m}-01`);
+  const start = S.workouts.map(w => w.date).sort()[0] || t; // los días anteriores a tu primer entreno no cuentan como «no hecho»
+  const byDay = {}; for (const w of S.workouts) if (w.date.startsWith(m)) (byDay[w.date] = byDay[w.date] || []).push(w);
+  const pname = id => (PLAN.find(p => p.id === id) || { name: 'Entreno libre' }).name, cells = [], PLAN_DOW = planDow();
+  for (let i = 0; i < lead; i++) cells.push('<span aria-hidden="true"></span>');
+  for (let d = 1; d <= ndays; d++) {
+    const k = `${m}-${pad(d)}`, ws = byDay[k] || [], plan = PLAN_DOW[dowOf(k)], tod = k === t ? ' today' : '';
+    if (ws.length) cells.push(`<button class="cd done${tod}" style="--c:${WT_COLOR[wType(ws[0])]}" data-a="editw" data-id="${ws[0].id}" aria-label="${d}: ${esc(ws.map(w => w.name).join(' y '))}${ws[0].dur ? ', ' + ws[0].dur + ' min' : ''}">${d}${ws.length > 1 ? `<i>${ws.length}</i>` : ''}</button>`);
+    else if (plan && k >= t) cells.push(`<span class="cd plan${tod}" style="--c:${WT_COLOR[plan]}" title="Toca ${esc(pname(plan))}" aria-label="${d}: toca ${esc(pname(plan))}">${d}</span>`);
+    else if (plan && k >= start) cells.push(`<span class="cd miss" title="No apuntado" aria-label="${d}: tocaba ${esc(pname(plan))}, no apuntado">${d}</span>`);
+    else cells.push(`<span class="cd${tod}">${d}</span>`);
+  }
+  const monthW = S.workouts.filter(w => w.date.startsWith(m)), mon = addDays(t, -dowOf(t)), weekN = S.workouts.filter(w => w.date >= mon && w.date <= addDays(mon, 6)).length;
+  const counts = {}; monthW.forEach(w => { const ty = wType(w); counts[ty] = (counts[ty] || 0) + 1; });
+  const mname = new Date(y, mo - 1, 1).toLocaleDateString('es-ES', { month: 'long' }), title = mname[0].toUpperCase() + mname.slice(1) + ' ' + y;
+  return `<section class="card"><div class="row between"><h2>${esc(title)}</h2>
+      <div class="row" style="gap:4px"><button class="btn sm quiet" data-a="calm" data-m="-1" aria-label="Mes anterior">‹</button><button class="btn sm quiet" data-a="calm" data-m="0" aria-label="Este mes">Hoy</button><button class="btn sm quiet" data-a="calm" data-m="1" aria-label="Mes siguiente">›</button></div></div>
+    <p class="small muted num">${monthW.length} ${monthW.length === 1 ? 'entreno' : 'entrenos'} este mes · esta semana ${weekN} de ${PLAN.length}</p>
+    <div class="cal" role="grid" aria-label="Calendario de entrenos">${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(x => `<span class="wd">${x}</span>`).join('')}${cells.join('')}</div>
+    <div class="stack" style="gap:6px;margin-top:10px">${PLAN.map(p => `<div class="row" style="gap:8px;align-items:center"><span class="dot" style="--c:${WT_COLOR[p.id]}"></span><span class="small grow">${esc(p.name)} <span class="muted">· ${p.day.toLowerCase()}</span></span><span class="small num muted">${counts[p.id] || 0}</span></div>`).join('')}
+      ${counts.otro ? `<div class="row" style="gap:8px;align-items:center"><span class="dot" style="--c:${WT_COLOR.otro}"></span><span class="small grow">Otros (libres o de Hevy)</span><span class="small num muted">${counts.otro}</span></div>` : ''}</div>
+    <p class="small muted">Relleno: entreno hecho (tócalo para verlo). Con borde de color: el que te toca ese día. Con borde gris: tocaba y no lo apuntaste.</p></section>`;
+}
 function bodyWorkouts() {
-  return `
+  return `${calendarCard()}
   <section class="card"><div class="row between"><h2>Tu plan · glúteo</h2><span class="pill pink">4 días</span></div>
     <p class="small muted">Glúteo dos días a la semana, con al menos 48 h de descanso entre ellos, más un día de torso y otro de cuerpo entero. Son unas 17 series directas de glúteo por semana. Para reducir abdomen, lo que funciona es el déficit calórico, los pasos diarios y entrenar fuerza. El core está para dar fuerza y postura, no para quemar la grasa de la zona.</p>
     ${PLAN.map((p, i) => `<details class="chapter" ${i === 0 ? 'open' : ''}><summary class="row between" style="cursor:pointer;list-style:none">
@@ -3078,6 +3117,7 @@ document.addEventListener('click', e => {
   }
   if (a === 'rest30') { if (UI.rest) UI.rest += 30000; return; }
   if (a === 'restoff') { UI.rest = null; return render(); }
+  if (a === 'calm') { const [y, mo] = (UI.calMonth || today().slice(0, 7)).split('-').map(Number), dt = +d.m ? new Date(y, mo - 1 + +d.m, 1) : new Date(); UI.calMonth = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}`; return render(); }
   if (a === 'exd') { UI.exDetail = d.k; window.scrollTo(0, 0); return render(); }
   if (a === 'exback') { UI.exDetail = null; return render(); }
   if (a === 'askreset') { UI.confirmReset = true; return render(); }
